@@ -3,12 +3,14 @@
 import dynamic from 'next/dynamic'
 import AIConfigModal from '@/components/shared/AIConfigModal'
 
-const ProjectListPage = dynamic(() => import('@/components/projects/ProjectListPage'), { ssr: false })
+const Workbench = dynamic(() => import('@/components/workbench/Workbench'), {
+  ssr: false,
+})
 
-export default function Home() {
+export default function WorkbenchPage() {
   return (
     <>
-      <ProjectListPage />
+      <Workbench />
       <AIConfigModal />
     </>
   )
