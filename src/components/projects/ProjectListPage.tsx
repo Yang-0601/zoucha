@@ -40,7 +40,20 @@ interface EditState {
 
 export default function ProjectListPage() {
   const router = useRouter()
-  const { setShowAIConfigModal } = useAppStore()
+  const {
+    setShowAIConfigModal,
+    setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
+    setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
+  } = useAppStore()
+
+  function clearVersionState() {
+    setDesignImage(null)
+    setLiveImage(null)
+    clearAnnotationsAndDiffs()
+    setAnalysisRunning(false)
+    setAnalysisProgress(0)
+    setAnalysisPhase('')
+  }
   const [projects, setProjects] = useState<Project[]>([])
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
@@ -98,7 +111,8 @@ export default function ProjectListPage() {
     setNewName('')
     setNewVersion('')
 
-    // Navigate directly to upload page
+    // Clear all in-memory state before entering new version
+    clearVersionState()
     router.push(`/project/${projectId}/version/${versionId}`)
   }
 
@@ -120,6 +134,7 @@ export default function ProjectListPage() {
     const versions = await getVersions(projectId)
     if (versions.length > 0) {
       const latestVersion = versions[0]
+      clearVersionState()
       router.push(`/project/${projectId}/version/${latestVersion.id}`)
     } else {
       router.push(`/project/${projectId}`)
