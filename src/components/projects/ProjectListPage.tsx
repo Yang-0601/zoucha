@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronRight, FolderOpen, Settings, Pencil, Clock, Check, X, GripVertical } from 'lucide-react'
-import { Project } from '@/types'
-import { getProjects, createProject, updateProject, deleteProject } from '@/lib/db'
+import { Project, ProjectVersion } from '@/types'
+import { getProjects, createProject, updateProject, deleteProject, getVersions, createVersion } from '@/lib/db'
 import { useAppStore } from '@/store'
 
 const T = {
@@ -80,11 +80,26 @@ export default function ProjectListPage() {
     const name = newName.trim() || '未命名项目'
     const version = newVersion.trim() || 'v1.0'
     const now = Date.now()
-    await createProject({ id: genId(), name, version, sortOrder: now, createdAt: now, updatedAt: now })
-    await loadProjects()
+    const projectId = genId()
+    await createProject({ id: projectId, name, version, sortOrder: now, createdAt: now, updatedAt: now })
+
+    // Create first version for new project
+    const versionId = genId()
+    const newVer: ProjectVersion = {
+      id: versionId,
+      projectId,
+      name: version,
+      createdAt: now,
+      updatedAt: now,
+    }
+    await createVersion(newVer)
+
     setCreating(false)
     setNewName('')
     setNewVersion('')
+
+    // Navigate directly to upload page
+    router.push(`/project/${projectId}/version/${versionId}`)
   }
 
   async function handleSaveEdit(project: Project) {
@@ -99,6 +114,16 @@ export default function ProjectListPage() {
     await deleteProject(id)
     await loadProjects()
     setDeleteConfirmId(null)
+  }
+
+  async function handleProjectClick(projectId: string) {
+    const versions = await getVersions(projectId)
+    if (versions.length > 0) {
+      const latestVersion = versions[0]
+      router.push(`/project/${projectId}/version/${latestVersion.id}`)
+    } else {
+      router.push(`/project/${projectId}`)
+    }
   }
 
   return (
@@ -284,7 +309,7 @@ export default function ProjectListPage() {
                     <div
                       className="flex items-center gap-2 flex-1 min-w-0"
                       style={{ cursor: 'pointer' }}
-                      onClick={() => router.push(`/project/${project.id}`)}
+                      onClick={() => handleProjectClick(project.id)}
                     >
                       <FolderOpen size={14} strokeWidth={1.5} style={{ color: T.mist, flexShrink: 0 }} />
                       <span style={{ fontSize: 14, fontWeight: 500, color: T.charcoal, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
