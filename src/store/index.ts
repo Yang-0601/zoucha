@@ -98,6 +98,7 @@ interface AppState {
   addAnnotation: (a: Annotation) => void
   updateAnnotation: (id: string, patch: Partial<Annotation>) => void
   removeAnnotation: (id: string) => void
+  clearAnnotationsAndDiffs: () => void
   addDiff: (d: DiffRecord) => void
   updateDiff: (id: string, patch: Partial<DiffRecord>) => void
   removeDiff: (id: string) => void
@@ -248,6 +249,12 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     set((s) => ({
       annotations: s.annotations.filter((a) => a.id !== id),
     })),
+  clearAnnotationsAndDiffs: () =>
+    set({
+      annotations: [],
+      diffs: [],
+      activeAnnotationId: null,
+    }),
   addDiff: (d) => set((s) => ({ diffs: [...s.diffs, d], activeAnnotationId: d.annotationId })),
   updateDiff: (id, patch) =>
     set((s) => ({

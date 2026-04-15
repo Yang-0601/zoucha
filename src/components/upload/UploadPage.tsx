@@ -24,6 +24,7 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setAnalysisRunning,
     setAnalysisProgress,
     setAnalysisPhase,
+    clearAnnotationsAndDiffs,
   } = useAppStore()
 
   const [previousVersionId, setPreviousVersionId] = useState<string | null>(null)
@@ -41,9 +42,7 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
       // Clear all images and annotations from previous version
       setDesignImage(null)
       setLiveImage(null)
-      if (activeAnnotationId) {
-        setActiveAnnotation(null)
-      }
+      clearAnnotationsAndDiffs()
       // Reset analysis state
       setAnalysisRunning(false)
       setAnalysisProgress(0)
@@ -51,7 +50,7 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
       // Update previous version ID
       setPreviousVersionId(currentVersionId)
     }
-  }, [versionId, setDesignImage, setLiveImage, setActiveAnnotation, setAnalysisRunning, setAnalysisProgress, setAnalysisPhase])
+  }, [versionId, setDesignImage, setLiveImage, clearAnnotationsAndDiffs, setAnalysisRunning, setAnalysisProgress, setAnalysisPhase])
 
   useEffect(() => {
     if (designImage) {
