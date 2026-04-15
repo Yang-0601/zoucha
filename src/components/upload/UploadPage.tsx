@@ -37,6 +37,17 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetWidth])
 
+  // Auto-navigate to workbench if both images exist
+  useEffect(() => {
+    if (designImage && liveImage && projectId && versionId) {
+      // Small delay to ensure state is settled
+      const timer = setTimeout(() => {
+        router.push(workbenchBase)
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [designImage, liveImage, projectId, versionId, router, workbenchBase])
+
   const handleDesignImage = async (img: Parameters<typeof setDesignImage>[0]) => {
     if (!img) return setDesignImage(null)
     const scaled = await scaleImageToWidth(img, targetWidth)

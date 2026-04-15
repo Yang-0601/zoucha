@@ -264,7 +264,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => router.push(`/project/${projectId}/version/${version.id}/workbench`)}>
+                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => router.push(`/project/${projectId}/version/${version.id}`)}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: T.charcoal }}>
                         {version.name}
                       </p>
@@ -302,7 +302,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                         <Trash2 size={13} strokeWidth={1.5} />
                       </button>
                       <button
-                        onClick={() => router.push(`/project/${projectId}/version/${version.id}/workbench`)}
+                        onClick={() => router.push(`/project/${projectId}/version/${version.id}`)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
                         onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
                         onMouseOut={e => (e.currentTarget.style.color = T.mist)}
