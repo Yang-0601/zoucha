@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -17,11 +17,36 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setDesignImage,
     setLiveImage,
     setShowAIConfigModal,
+    annotations,
+    diffs,
+    activeAnnotationId,
+    setActiveAnnotation,
   } = useAppStore()
 
   const workbenchBase = projectId && versionId
     ? `/project/${projectId}/version/${versionId}/workbench`
     : '/workbench'
+
+  const activeVersionRef = useRef<string | null>(null)
+
+  // Clear data when switching to a new version
+  useEffect(() => {
+    const currentVersionKey = versionId ? `${projectId}-${versionId}` : null
+
+    if (currentVersionKey && activeVersionRef.current !== currentVersionKey) {
+      // Version changed, clear previous version's data
+      if (designImage || liveImage) {
+        setDesignImage(null)
+        setLiveImage(null)
+      }
+      // Clear active annotation
+      if (activeAnnotationId) {
+        setActiveAnnotation(null)
+      }
+      // Update the ref to track current version
+      activeVersionRef.current = currentVersionKey
+    }
+  }, [versionId, projectId, designImage, liveImage, activeAnnotationId, setDesignImage, setLiveImage, setActiveAnnotation])
 
   useEffect(() => {
     if (designImage) {
