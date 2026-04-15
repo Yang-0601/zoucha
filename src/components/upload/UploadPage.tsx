@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -17,40 +17,11 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setDesignImage,
     setLiveImage,
     setShowAIConfigModal,
-    activeAnnotationId,
-    setActiveAnnotation,
-    annotations,
-    diffs,
-    setAnalysisRunning,
-    setAnalysisProgress,
-    setAnalysisPhase,
-    clearAnnotationsAndDiffs,
   } = useAppStore()
-
-  const [previousVersionId, setPreviousVersionId] = useState<string | null>(null)
 
   const workbenchBase = projectId && versionId
     ? `/project/${projectId}/version/${versionId}/workbench`
     : '/workbench'
-
-  // Clear data when switching to a new version
-  useEffect(() => {
-    const currentVersionId = versionId || null
-
-    // If versionId changed and is different from previous
-    if (currentVersionId && currentVersionId !== previousVersionId) {
-      // Clear all images and annotations from previous version
-      setDesignImage(null)
-      setLiveImage(null)
-      clearAnnotationsAndDiffs()
-      // Reset analysis state
-      setAnalysisRunning(false)
-      setAnalysisProgress(0)
-      setAnalysisPhase('')
-      // Update previous version ID
-      setPreviousVersionId(currentVersionId)
-    }
-  }, [versionId, setDesignImage, setLiveImage, clearAnnotationsAndDiffs, setAnalysisRunning, setAnalysisProgress, setAnalysisPhase])
 
   useEffect(() => {
     if (designImage) {
@@ -65,17 +36,6 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetWidth])
-
-  // Auto-navigate to workbench if both images exist
-  useEffect(() => {
-    if (designImage && liveImage && projectId && versionId) {
-      // Small delay to ensure state is settled
-      const timer = setTimeout(() => {
-        router.push(workbenchBase)
-      }, 500)
-      return () => clearTimeout(timer)
-    }
-  }, [designImage, liveImage, projectId, versionId, router, workbenchBase])
 
   const handleDesignImage = async (img: Parameters<typeof setDesignImage>[0]) => {
     if (!img) return setDesignImage(null)

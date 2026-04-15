@@ -31,7 +31,11 @@ function genId() {
 
 export default function VersionListPage({ projectId }: { projectId: string }) {
   const router = useRouter()
-  const { setShowAIConfigModal, showReportModal, setShowReportModal } = useAppStore()
+  const {
+    setShowAIConfigModal, showReportModal, setShowReportModal,
+    setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
+    setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
+  } = useAppStore()
   const [project, setProject] = useState<Project | null>(null)
   const [versions, setVersions] = useState<ProjectVersion[]>([])
   const [creating, setCreating] = useState(false)
@@ -55,6 +59,15 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     if (editingId) editInputRef.current?.focus()
   }, [editingId])
 
+  function clearVersionState() {
+    setDesignImage(null)
+    setLiveImage(null)
+    clearAnnotationsAndDiffs()
+    setAnalysisRunning(false)
+    setAnalysisProgress(0)
+    setAnalysisPhase('')
+  }
+
   async function handleCreate() {
     const name = newName.trim() || `版本 ${versions.length + 1}`
     const version: ProjectVersion = {
@@ -69,7 +82,8 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     setCreating(false)
     setNewName('')
 
-    // Navigate directly to upload page for new version
+    // Clear all in-memory state before entering new version
+    clearVersionState()
     router.push(`/project/${projectId}/version/${version.id}`)
   }
 
@@ -264,7 +278,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => router.push(`/project/${projectId}/version/${version.id}`)}>
+                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => { clearVersionState(); router.push(`/project/${projectId}/version/${version.id}`) }}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: T.charcoal }}>
                         {version.name}
                       </p>
@@ -302,7 +316,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                         <Trash2 size={13} strokeWidth={1.5} />
                       </button>
                       <button
-                        onClick={() => router.push(`/project/${projectId}/version/${version.id}`)}
+                        onClick={() => { clearVersionState(); router.push(`/project/${projectId}/version/${version.id}`) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
                         onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
                         onMouseOut={e => (e.currentTarget.style.color = T.mist)}
