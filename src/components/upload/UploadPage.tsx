@@ -19,6 +19,11 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setShowAIConfigModal,
     activeAnnotationId,
     setActiveAnnotation,
+    annotations,
+    diffs,
+    setAnalysisRunning,
+    setAnalysisProgress,
+    setAnalysisPhase,
   } = useAppStore()
 
   const [previousVersionId, setPreviousVersionId] = useState<string | null>(null)
@@ -33,16 +38,20 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
 
     // If versionId changed and is different from previous
     if (currentVersionId && currentVersionId !== previousVersionId) {
-      // Clear the images and annotations from previous version
+      // Clear all images and annotations from previous version
       setDesignImage(null)
       setLiveImage(null)
       if (activeAnnotationId) {
         setActiveAnnotation(null)
       }
+      // Reset analysis state
+      setAnalysisRunning(false)
+      setAnalysisProgress(0)
+      setAnalysisPhase('')
       // Update previous version ID
       setPreviousVersionId(currentVersionId)
     }
-  }, [versionId])
+  }, [versionId, setDesignImage, setLiveImage, setActiveAnnotation, setAnalysisRunning, setAnalysisProgress, setAnalysisPhase])
 
   useEffect(() => {
     if (designImage) {

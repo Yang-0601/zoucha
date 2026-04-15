@@ -18,6 +18,8 @@ export default function Workbench() {
   // e.g. /project/abc/version/xyz/workbench → back to /project/abc
   const segments = pathname.split('/')
   const backUrl = segments[1] === 'project' && segments[2] ? `/project/${segments[2]}` : '/'
+  const versionId = segments[4] || null
+
   const {
     designImage, liveImage,
     setShowAIConfigModal, toggleRuler,
