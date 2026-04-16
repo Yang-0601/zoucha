@@ -26,6 +26,7 @@ const PROVIDERS: { value: AIProvider; label: string }[] = [
 ]
 
 const PROVIDER_DEFAULT_BASE_URL: Partial<Record<AIProvider, string>> = {
+  google: 'https://generativelanguage.googleapis.com',
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
 }
 
@@ -33,12 +34,16 @@ const MODEL_PRESETS: Record<AIProvider, string[]> = {
   anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-3-5-sonnet-20241022'],
   openai:    ['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision-preview'],
   google:    [
-    'gemini-2.5-pro-preview-05-06',
-    'gemini-2.5-flash-preview-04-17',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
+    'gemini-3.1-pro-preview',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
     'gemini-1.5-pro',
     'gemini-1.5-flash',
+    'gemini-1.0-pro',
+    'gemini-1.0-flash',
   ],
   zhipu:     ['glm-4.6v-flash', 'glm-4v-flash', 'glm-4v-plus', 'glm-4v'],
   custom:    [],
@@ -123,7 +128,36 @@ function ConfigCard({
     if (!config.modelName) { setTestStatus('fail'); setTestMsg('请先选择模型'); return }
     setTestStatus('testing')
     setTestMsg('')
+
     try {
+      // 直接从浏览器端测试 Gemini API 连通性
+      if (config.provider === 'google') {
+        const base = (config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
+        const useApiKey = /^AIza[0-9A-Za-z_-]+$/.test(config.apiKey)
+        const url = useApiKey
+          ? `${base}/v1beta/models/${encodeURIComponent(config.modelName)}?key=${encodeURIComponent(config.apiKey)}`
+          : `${base}/v1beta/models/${encodeURIComponent(config.modelName)}`
+        const headers: Record<string, string> = {}
+        if (!useApiKey) headers.Authorization = `Bearer ${config.apiKey}`
+
+        const res = await fetch(url, { headers })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          const msg = data?.error?.message ?? `${res.status}`
+          setTestStatus('fail')
+          setTestMsg(
+            msg.includes('401') || msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('api key') ? 'API Key 无效' :
+            msg.includes('403') ? '无权限' :
+            `连接失败：${msg}`
+          )
+          return
+        }
+        setTestStatus('ok')
+        setTestMsg('连接正常')
+        return
+      }
+
+      // 其他 provider 继续使用服务端测试
       const res = await fetch('/api/ai-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,7 +239,7 @@ function ConfigCard({
             value={config.provider}
             onChange={v => {
                 const p = v as AIProvider
-                onChange({ provider: p, modelName: '', baseUrl: PROVIDER_DEFAULT_BASE_URL[p] ?? '' })
+                onChange({ provider: p, modelName: '', baseUrl: PROVIDER_DEFAULT_BASE_URL[p] })
               }}
           >
             {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -216,10 +250,18 @@ function ConfigCard({
           {config.provider === 'custom' ? (
             <WasiInput value={config.modelName} onChange={v => onChange({ modelName: v })} placeholder="模型 ID" />
           ) : (
-            <WasiSelect value={config.modelName} onChange={v => onChange({ modelName: v })}>
-              <option value="">选择模型</option>
-              {MODEL_PRESETS[config.provider].map(m => <option key={m} value={m}>{m}</option>)}
-            </WasiSelect>
+            <>
+              <WasiSelect value={config.modelName} onChange={v => onChange({ modelName: v })}>
+                <option value="">选择模型</option>
+                {MODEL_PRESETS[config.provider].map(m => <option key={m} value={m}>{m}</option>)}
+              </WasiSelect>
+              {config.provider === 'google' && (
+                <p style={{ fontSize: 10, color: T.mist, marginTop: 6, lineHeight: 1.4 }}>
+                  Google Gemini 模型请使用官方模型名称，推荐：gemini-2.5-pro-preview-05-06 / gemini-2.5-flash-preview-04-17。
+                  API Key 需为 Google Cloud API key（例如以 AIza 开头），也支持 OAuth Bearer token。
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

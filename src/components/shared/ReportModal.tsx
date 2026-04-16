@@ -287,25 +287,8 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       for (const ann of annotations) {
         const sx = liveOX + ann.position.x * liveScale
         const sy = liveOY + ann.position.y * liveScale
-        const r = 10
-        // bubble
-        ctx.beginPath()
-        ctx.arc(sx, sy, r, 0, Math.PI * 2)
-        ctx.fillStyle = ANN_COLOR[ann.severity] ?? '#6b7280'
-        ctx.fill()
-        ctx.strokeStyle = 'white'
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-        // index
-        ctx.fillStyle = 'white'
-        ctx.font = `700 10px -apple-system, "PingFang SC", sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(String(ann.index), sx, sy)
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'alphabetic'
 
-        // draw rect if style B/C
+        // draw rect if style B/C first so bubble sits above it
         if (ann.rect && (ann.style === 'B' || ann.style === 'C')) {
           const rx = liveOX + ann.rect.x * liveScale
           const ry = liveOY + ann.rect.y * liveScale
@@ -320,6 +303,22 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
             ctx.strokeRect(rx, ry, rw, rh)
           }
         }
+
+        const r = 10
+        ctx.beginPath()
+        ctx.arc(sx, sy, r, 0, Math.PI * 2)
+        ctx.fillStyle = ANN_COLOR[ann.severity] ?? '#6b7280'
+        ctx.fill()
+        ctx.strokeStyle = 'white'
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+        ctx.fillStyle = 'white'
+        ctx.font = `700 10px -apple-system, "PingFang SC", sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(ann.index), sx, sy)
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'alphabetic'
       }
 
       // image labels
@@ -420,9 +419,11 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
   }, [designImage, liveImage, diffs, annotations, similarity, typeCounts])
 
   // ─── PDF export ────────────────────────────────────────────────────────────
-  const exportPdf = useCallback(() => {
+  const exportPdf = useCallback(async () => {
+    if (!designImage || !liveImage) return
     setExporting('pdf')
 
+    const annotatedLiveUrl = await createAnnotatedLiveImageUrl(liveImage, annotations)
     const typeRows = Object.entries(typeCounts)
       .map(([k, v]) => `<span class="tag">${DIFF_TYPE_LABEL[k] ?? k} <b>${v}</b></span>`)
       .join('')
@@ -494,7 +495,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
     <div class="img-label">设计稿</div>
   </div>
   <div class="img-box">
-    <img src="${liveImage?.scaledUrl ?? liveImage?.url ?? ''}" />
+    <img src="${annotatedLiveUrl}" />
     <div class="img-label">线上稿（含标注）</div>
   </div>
 </div>
@@ -777,4 +778,50 @@ function drawImageFit(
   ctx.fillStyle = '#f0ede6'
   ctx.fillRect(x, y, w, h)
   ctx.drawImage(img, ox, oy, rw, rh)
+}
+
+async function createAnnotatedLiveImageUrl(
+  liveImage: any,
+  annotations: any[],
+) {
+  const img = await loadImage(liveImage.scaledUrl ?? liveImage.url)
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(img, 0, 0, W, H)
+  for (const ann of annotations) {
+    if (ann.rect && (ann.style === 'B' || ann.style === 'C')) {
+      const rx = ann.rect.x
+      const ry = ann.rect.y
+      const rw = ann.rect.w
+      const rh = ann.rect.h
+      if (ann.style === 'C') {
+        ctx.fillStyle = `${ANN_COLOR[ann.severity]}44`
+        ctx.fillRect(rx, ry, rw, rh)
+      } else {
+        ctx.strokeStyle = ANN_COLOR[ann.severity]
+        ctx.lineWidth = 1.5
+        ctx.strokeRect(rx, ry, rw, rh)
+      }
+    }
+    const sx = ann.position.x
+    const sy = ann.position.y
+    const r = 10
+    ctx.beginPath()
+    ctx.arc(sx, sy, r, 0, Math.PI * 2)
+    ctx.fillStyle = ANN_COLOR[ann.severity] ?? '#6b7280'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    ctx.fillStyle = 'white'
+    ctx.font = `700 10px -apple-system, "PingFang SC", sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(ann.index), sx, sy)
+  }
+  return canvas.toDataURL('image/png')
 }

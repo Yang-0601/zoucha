@@ -13,6 +13,11 @@ export async function POST(req: NextRequest) {
     if (!apiKey) return NextResponse.json({ error: '请先填写 API Key' }, { status: 400 })
     if (!modelName) return NextResponse.json({ error: '请先选择模型' }, { status: 400 })
 
+    // Gemini 现在直接从浏览器端测试，这里只处理其他 provider
+    if (provider === 'google') {
+      return NextResponse.json({ error: 'Gemini 应从浏览器端直接测试' }, { status: 400 })
+    }
+
     let res: Response
 
     if (provider === 'anthropic') {
@@ -45,19 +50,6 @@ export async function POST(req: NextRequest) {
           messages: [{ role: 'user', content: 'hi' }],
         }),
       })
-    } else if (provider === 'google') {
-      const base = (baseUrl ?? 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
-      res = await fetch(
-        `${base}/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: 'hi' }] }],
-            generationConfig: { maxOutputTokens: 1 },
-          }),
-        },
-      )
     } else {
       return NextResponse.json({ error: '未知 provider' }, { status: 400 })
     }

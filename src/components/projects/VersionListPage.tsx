@@ -35,6 +35,8 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     setShowAIConfigModal, showReportModal, setShowReportModal,
     setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
     setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
+    switchVersion, activeVersionId, versionData,
+    designImage, liveImage, annotations, diffs,
   } = useAppStore()
   const [project, setProject] = useState<Project | null>(null)
   const [versions, setVersions] = useState<ProjectVersion[]>([])
@@ -52,6 +54,10 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   }, [projectId])
 
   useEffect(() => {
+    switchVersion(null)
+  }, [switchVersion])
+
+  useEffect(() => {
     if (creating) newInputRef.current?.focus()
   }, [creating])
 
@@ -60,12 +66,21 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   }, [editingId])
 
   function clearVersionState() {
-    setDesignImage(null)
-    setLiveImage(null)
-    clearAnnotationsAndDiffs()
-    setAnalysisRunning(false)
-    setAnalysisProgress(0)
-    setAnalysisPhase('')
+    switchVersion(null)
+  }
+
+  function hasVersionContent(versionId: string) {
+    if (activeVersionId === versionId) {
+      return !!designImage || !!liveImage || annotations.length > 0 || diffs.length > 0
+    }
+    const snapshot = versionData[versionId]
+    return !!snapshot && (!!snapshot.designImage || !!snapshot.liveImage || snapshot.annotations.length > 0 || snapshot.diffs.length > 0)
+  }
+
+  function getVersionEntryUrl(versionId: string) {
+    const workbenchBase = `/project/${projectId}/version/${versionId}/workbench`
+    const uploadBase = `/project/${projectId}/version/${versionId}`
+    return hasVersionContent(versionId) ? workbenchBase : uploadBase
   }
 
   async function handleCreate() {
@@ -278,7 +293,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => { clearVersionState(); router.push(`/project/${projectId}/version/${version.id}`) }}>
+                    <div className="flex-1 min-w-0" style={{ cursor: 'pointer' }} onClick={() => router.push(getVersionEntryUrl(version.id))}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: T.charcoal }}>
                         {version.name}
                       </p>
@@ -316,7 +331,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                         <Trash2 size={13} strokeWidth={1.5} />
                       </button>
                       <button
-                        onClick={() => { clearVersionState(); router.push(`/project/${projectId}/version/${version.id}`) }}
+                        onClick={() => router.push(getVersionEntryUrl(version.id))}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
                         onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
                         onMouseOut={e => (e.currentTarget.style.color = T.mist)}

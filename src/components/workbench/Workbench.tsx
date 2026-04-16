@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Settings, FileDown } from 'lucide-react'
@@ -10,6 +10,7 @@ import DiffList from './DiffList'
 import CompareCanvas from './CompareCanvas'
 import DetailPanel from './DetailPanel'
 import ReportModal from '@/components/shared/ReportModal'
+import WorkbenchGuideModal from '@/components/shared/WorkbenchGuideModal'
 
 export default function Workbench() {
   const router = useRouter()
@@ -24,11 +25,25 @@ export default function Workbench() {
     designImage, liveImage,
     setShowAIConfigModal, toggleRuler,
     showReportModal, setShowReportModal,
+    showHelpModal, setShowHelpModal,
+    switchVersion, versionData,
+    annotations, diffs,
   } = useAppStore()
 
+  const versionSnapshot = versionId ? versionData[versionId] : undefined
+
+  useLayoutEffect(() => {
+    if (versionId) {
+      switchVersion(versionId)
+    }
+  }, [versionId, switchVersion])
+
   useEffect(() => {
-    if (!designImage || !liveImage) router.replace(backUrl)
-  }, [designImage, liveImage, router, backUrl])
+    const hasExistingContent = !!designImage || !!liveImage || annotations.length > 0 || diffs.length > 0
+    if (versionId && !hasExistingContent && !versionSnapshot) {
+      router.replace(backUrl)
+    }
+  }, [designImage, liveImage, annotations.length, diffs.length, versionSnapshot, versionId, router, backUrl])
 
   useEffect(() => {
     if (searchParams.get('export') === '1' && designImage && liveImage) {
@@ -83,6 +98,17 @@ export default function Workbench() {
         <div className="flex-1" />
 
         <button
+          onClick={() => setShowHelpModal(true)}
+          className="flex items-center gap-1 transition-colors duration-150 px-2 py-1"
+          style={{ fontSize: 12, color: '#8A8680', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4 }}
+          onMouseOver={e => (e.currentTarget.style.color = '#252525')}
+          onMouseOut={e => (e.currentTarget.style.color = '#8A8680')}
+        >
+          <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 9999, background: '#8A8680', textAlign: 'center', lineHeight: '10px', fontSize: 10, color: '#F7F4EE' }}>?</span>
+          使用手册
+        </button>
+
+        <button
           onClick={() => setShowReportModal(true)}
           className="flex items-center gap-1 transition-colors duration-150 px-2 py-1"
           style={{ fontSize: 12, color: '#8A8680', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4 }}
@@ -118,6 +144,7 @@ export default function Workbench() {
       </div>
 
       {showReportModal && <ReportModal onClose={() => setShowReportModal(false)} />}
+      {showHelpModal && <WorkbenchGuideModal onClose={() => setShowHelpModal(false)} />}
     </div>
   )
 }

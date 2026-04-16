@@ -156,39 +156,68 @@ async function runGoogle(
   liveBase64: string,
   cb: AnalysisCallbacks,
 ) {
+  const baseUrl = (config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
+  const useApiKey = /^AIza[0-9A-Za-z_-]+$/.test(config.apiKey)
+  const url = useApiKey
+    ? `${baseUrl}/v1beta/models/${encodeURIComponent(config.modelName)}:generateContent?key=${encodeURIComponent(config.apiKey)}`
+    : `${baseUrl}/v1beta/models/${encodeURIComponent(config.modelName)}:generateContent`
+
   cb.onProgress(10, '连接模型…')
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (!useApiKey) headers.Authorization = `Bearer ${config.apiKey}`
+
   const instructions = config.customPrompt ?? ''
-  const res = await fetch('/api/google-ai', {
+  const res = await fetch(url, {
     method: 'POST',
     signal: cb.signal,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
-      model: config.modelName,
-      apiKey: config.apiKey,
-      payload: {
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{
-          role: 'user',
-          parts: [
-            { inline_data: { mime_type: 'image/png', data: designBase64 } },
-            { inline_data: { mime_type: 'image/png', data: liveBase64 } },
-            { text: `Image 1 is the design mockup. Image 2 is the live implementation.\n${instructions}` },
-          ],
-        }],
-        generationConfig: { maxOutputTokens: 8192 },
-      },
+      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: [{
+        role: 'user',
+        parts: [
+          { inline_data: { mime_type: 'image/png', data: designBase64 } },
+          { inline_data: { mime_type: 'image/png', data: liveBase64 } },
+          { text: `Image 1 is the design mockup. Image 2 is the live implementation.\n${instructions}` },
+        ],
+      }],
+      generationConfig: { maxOutputTokens: 8192 },
     }),
   })
 
   if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Google ${res.status}: ${err}`)
+    const text = await res.text()
+    let body: unknown
+    try {
+      body = JSON.parse(text)
+    } catch {
+      body = null
+    }
+
+    const errorMessage = typeof body === 'object' && body !== null
+      ? (body as Record<string, any>)?.error?.message ?? text
+      : text
+
+    const isQuotaOrBilling =
+      res.status === 429 ||
+      errorMessage?.toString().includes('RESOURCE_EXHAUSTED') ||
+      errorMessage?.toString().includes('Quota exceeded') ||
+      errorMessage?.toString().includes('free_tier')
+
+    if (isQuotaOrBilling) {
+      throw new Error(
+        'Google Gemini 出现配额或计费问题，请检查 Google Cloud 计费/配额并确认当前项目已启用 Gemini 模型。',
+      )
+    }
+
+    throw new Error(`Google ${res.status}: ${errorMessage}`)
   }
 
   cb.onProgress(40, '解析响应…')
   const data = await res.json()
-  const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  const candidate = data?.candidates?.[0]?.content
+  const text: string = candidate?.parts?.[0]?.text ?? candidate?.text ?? ''
   cb.onProgress(80, '写入差异…')
   extractDiffs(text).forEach(cb.onDiff)
   cb.onProgress(100, '完成')

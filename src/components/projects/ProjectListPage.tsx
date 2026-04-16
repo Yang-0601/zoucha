@@ -44,15 +44,11 @@ export default function ProjectListPage() {
     setShowAIConfigModal,
     setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
     setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
+    switchVersion,
   } = useAppStore()
 
   function clearVersionState() {
-    setDesignImage(null)
-    setLiveImage(null)
-    clearAnnotationsAndDiffs()
-    setAnalysisRunning(false)
-    setAnalysisProgress(0)
-    setAnalysisPhase('')
+    switchVersion(null)
   }
   const [projects, setProjects] = useState<Project[]>([])
   const [creating, setCreating] = useState(false)
@@ -70,7 +66,10 @@ export default function ProjectListPage() {
     setProjects(await getProjects())
   }
 
-  useEffect(() => { loadProjects() }, [])
+  useEffect(() => {
+    switchVersion(null)
+    loadProjects()
+  }, [switchVersion])
   useEffect(() => { if (creating) newNameRef.current?.focus() }, [creating])
   useEffect(() => { if (editingId) editNameRef.current?.focus() }, [editingId])
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
@@ -17,7 +17,14 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setDesignImage,
     setLiveImage,
     setShowAIConfigModal,
+    switchVersion,
   } = useAppStore()
+
+  useLayoutEffect(() => {
+    if (versionId) {
+      switchVersion(versionId)
+    }
+  }, [versionId, switchVersion])
 
   const workbenchBase = projectId && versionId
     ? `/project/${projectId}/version/${versionId}/workbench`

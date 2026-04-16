@@ -21,6 +21,17 @@ const EMPTY_GUIDELINES_MAP = (): Record<CompareMode, Guideline[]> => ({
   'overlap': [],
 })
 
+interface VersionSnapshot {
+  designImage: ImageFile | null
+  liveImage: ImageFile | null
+  activeAnnotationId: string | null
+  annotations: Annotation[]
+  diffs: DiffRecord[]
+  analysisRunning: boolean
+  analysisProgress: number
+  analysisPhase: string
+}
+
 interface AppState {
   // Upload page
   designImage: ImageFile | null
@@ -54,6 +65,8 @@ interface AppState {
   analysisRunning: boolean
   analysisProgress: number
   analysisPhase: string
+  activeVersionId: string | null
+  versionData: Record<string, VersionSnapshot>
 
   // Annotation mode
   annotationMode: boolean
@@ -113,8 +126,11 @@ interface AppState {
   setShowAIConfigModal: (v: boolean) => void
   showReportModal: boolean
   setShowReportModal: (v: boolean) => void
+  showHelpModal: boolean
+  setShowHelpModal: (v: boolean) => void
   setConfidenceThreshold: (v: number) => void
   setDiffFilter: (f: 'all' | 'ai' | 'manual') => void
+  switchVersion: (versionId: string | null) => void
   customDiffTypes: string[]
   addCustomDiffType: (label: string) => void
   removeCustomDiffType: (label: string) => void
@@ -150,10 +166,14 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   analysisRunning: false,
   analysisProgress: 0,
   analysisPhase: '',
+  activeVersionId: null,
+  versionData: {},
 
   aiConfigs: [],
   activeAIConfigId: null,
   showAIConfigModal: false,
+  showReportModal: false,
+  showHelpModal: false,
   confidenceThreshold: 70,
   diffFilter: 'all' as 'all' | 'ai' | 'manual',
   customDiffTypes: [],
@@ -167,6 +187,49 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   setLiveImage: (img) => set({ liveImage: img }),
   setTargetWidth: (w) => set({ targetWidth: w }),
   setCustomWidth: (v) => set({ customWidth: v }),
+  switchVersion: (versionId) => set((state) => {
+    const currentId = state.activeVersionId
+    const outgoingSnapshot = currentId ? {
+      designImage: state.designImage,
+      liveImage: state.liveImage,
+      activeAnnotationId: state.activeAnnotationId,
+      annotations: state.annotations,
+      diffs: state.diffs,
+      analysisRunning: state.analysisRunning,
+      analysisProgress: state.analysisProgress,
+      analysisPhase: state.analysisPhase,
+    } : null
+
+    if (currentId === versionId) {
+      return {}
+    }
+
+    const nextSnapshot = versionId ? state.versionData[versionId] : undefined
+    const nextVersionData = currentId && outgoingSnapshot
+      ? { ...state.versionData, [currentId]: outgoingSnapshot }
+      : state.versionData
+
+    if (nextSnapshot) {
+      return {
+        versionData: nextVersionData,
+        activeVersionId: versionId,
+        ...nextSnapshot,
+      }
+    }
+
+    return {
+      versionData: nextVersionData,
+      activeVersionId: versionId,
+      designImage: null,
+      liveImage: null,
+      activeAnnotationId: null,
+      annotations: [],
+      diffs: [],
+      analysisRunning: false,
+      analysisProgress: 0,
+      analysisPhase: '',
+    }
+  }),
   overlayDesignViewState: { ...DEFAULT_VIEW },
   overlayLiveViewState: { ...DEFAULT_VIEW },
   overlaySelectedLayer: 'design' as 'design' | 'live',
@@ -246,9 +309,15 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       ),
     })),
   removeAnnotation: (id) =>
-    set((s) => ({
-      annotations: s.annotations.filter((a) => a.id !== id),
-    })),
+    set((s) => {
+      const annotations = s.annotations.filter((a) => a.id !== id)
+      return {
+        annotations: annotations.map((a) => {
+          const diffIdx = s.diffs.findIndex((d) => d.annotationId === a.id || d.id === a.diffId)
+          return diffIdx >= 0 ? { ...a, index: diffIdx + 1 } : a
+        }),
+      }
+    }),
   clearAnnotationsAndDiffs: () =>
     set({
       annotations: [],
@@ -261,7 +330,16 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       diffs: s.diffs.map((d) => (d.id === id ? { ...d, ...patch } : d)),
     })),
   removeDiff: (id) =>
-    set((s) => ({ diffs: s.diffs.filter((d) => d.id !== id) })),
+    set((s) => {
+      const diffs = s.diffs.filter((d) => d.id !== id)
+      return {
+        diffs,
+        annotations: s.annotations.map((a) => {
+          const diffIdx = diffs.findIndex((d) => d.annotationId === a.id || d.id === a.diffId)
+          return diffIdx >= 0 ? { ...a, index: diffIdx + 1 } : a
+        }),
+      }
+    }),
   reorderDiffs: (fromId, toId) =>
     set((s) => {
       const arr = [...s.diffs]
@@ -292,8 +370,8 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
     set((s) => ({ aiConfigs: s.aiConfigs.filter((c) => c.id !== id) })),
   setActiveAIConfig: (id) => set({ activeAIConfigId: id }),
   setShowAIConfigModal: (v) => set({ showAIConfigModal: v }),
-  showReportModal: false,
   setShowReportModal: (v) => set({ showReportModal: v }),
+  setShowHelpModal: (v) => set({ showHelpModal: v }),
   setConfidenceThreshold: (v) => set({ confidenceThreshold: v }),
   setDiffFilter: (f) => set({ diffFilter: f }),
   addCustomDiffType: (label) => set((s) => ({
