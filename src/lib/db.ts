@@ -1,7 +1,7 @@
-import { Project, ProjectVersion, AuditReport } from '@/types'
+import { Project, ProjectVersion } from '@/types'
 
 const DB_NAME = 'design-review-db'
-const DB_VERSION = 2
+const DB_VERSION = 1
 
 let _db: IDBDatabase | null = null
 
@@ -17,10 +17,6 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('versions')) {
         const vs = db.createObjectStore('versions', { keyPath: 'id' })
         vs.createIndex('projectId', 'projectId', { unique: false })
-      }
-      if (!db.objectStoreNames.contains('audit_reports')) {
-        const ar = db.createObjectStore('audit_reports', { keyPath: 'id' })
-        ar.createIndex('versionId', 'versionId', { unique: false })
       }
     }
     req.onsuccess = e => {
@@ -97,36 +93,5 @@ export async function updateVersion(version: ProjectVersion): Promise<void> {
 
 export async function deleteVersion(id: string): Promise<void> {
   const db = await openDB()
-  await deleteAuditReport(id)
   await req(db.transaction('versions', 'readwrite').objectStore('versions').delete(id))
-}
-
-// ── Audit Reports ─────────────────────────────────────────────────────────────
-
-export async function saveAuditReport(report: AuditReport): Promise<void> {
-  const db = await openDB()
-  await req(db.transaction('audit_reports', 'readwrite').objectStore('audit_reports').put(report))
-}
-
-export async function getAuditReport(versionId: string): Promise<AuditReport | undefined> {
-  const db = await openDB()
-  const all: AuditReport[] = await req(
-    db.transaction('audit_reports', 'readonly').objectStore('audit_reports').index('versionId').getAll(versionId)
-  )
-  return all[0]
-}
-
-export async function deleteAuditReport(versionId: string): Promise<void> {
-  const db = await openDB()
-  const all: AuditReport[] = await req(
-    db.transaction('audit_reports', 'readonly').objectStore('audit_reports').index('versionId').getAll(versionId)
-  )
-  if (all.length > 0) {
-    const t = db.transaction('audit_reports', 'readwrite')
-    for (const r of all) t.objectStore('audit_reports').delete(r.id)
-    await new Promise<void>((resolve, reject) => {
-      t.oncomplete = () => resolve()
-      t.onerror = () => reject(t.error)
-    })
-  }
 }
