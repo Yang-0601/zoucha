@@ -8,6 +8,9 @@ import {
   ImageFile,
   AIModelConfig,
   Guideline,
+  ReviewQuestion,
+  ReviewAnswer,
+  AuditReport,
 } from '@/types'
 
 const PRESET_WIDTHS = [375, 390, 750, 768, 1280, 1440, 1920]
@@ -134,6 +137,31 @@ interface AppState {
   customDiffTypes: string[]
   addCustomDiffType: (label: string) => void
   removeCustomDiffType: (label: string) => void
+
+  // Upload mode
+  uploadMode: 'inspect' | 'review'
+  setUploadMode: (m: 'inspect' | 'review') => void
+
+  // Review flow
+  reviewImages: ImageFile[]
+  reviewQuestions: ReviewQuestion[]
+  reviewAnswers: ReviewAnswer[]
+  auditReport: AuditReport | null
+  reviewRunning: boolean
+  reviewPhase: string
+  reviewProgress: number
+
+  // Review actions
+  addReviewImage: (img: ImageFile) => void
+  removeReviewImage: (index: number) => void
+  clearReviewImages: () => void
+  setReviewQuestions: (qs: ReviewQuestion[]) => void
+  setReviewAnswers: (as: ReviewAnswer[]) => void
+  updateReviewAnswer: (questionId: string, selected: string[]) => void
+  setAuditReport: (r: AuditReport | null) => void
+  setReviewRunning: (v: boolean) => void
+  setReviewPhase: (v: string) => void
+  setReviewProgress: (v: number) => void
 }
 
 export const PRESET_WIDTHS_LIST = PRESET_WIDTHS
@@ -180,6 +208,15 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
 
   annotationMode: false,
   pendingAnnotationStyle: 'A' as import('@/types').AnnotationStyle,
+
+  uploadMode: 'inspect' as 'inspect' | 'review',
+  reviewImages: [],
+  reviewQuestions: [],
+  reviewAnswers: [],
+  auditReport: null,
+  reviewRunning: false,
+  reviewPhase: '',
+  reviewProgress: 0,
 
   setAnnotationMode: (v) => set({ annotationMode: v }),
   setPendingAnnotationStyle: (s) => set({ pendingAnnotationStyle: s }),
@@ -387,6 +424,22 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       diffType: d.diffType.length > 0 ? d.diffType : ['element'],
     })),
   })),
+
+  setUploadMode: (m) => set({ uploadMode: m }),
+  addReviewImage: (img) => set((s) => ({ reviewImages: [...s.reviewImages, img] })),
+  removeReviewImage: (index) => set((s) => ({ reviewImages: s.reviewImages.filter((_, i) => i !== index) })),
+  clearReviewImages: () => set({ reviewImages: [] }),
+  setReviewQuestions: (qs) => set({ reviewQuestions: qs }),
+  setReviewAnswers: (as) => set({ reviewAnswers: as }),
+  updateReviewAnswer: (questionId, selected) => set((s) => ({
+    reviewAnswers: s.reviewAnswers.some(a => a.questionId === questionId)
+      ? s.reviewAnswers.map(a => a.questionId === questionId ? { ...a, selected } : a)
+      : [...s.reviewAnswers, { questionId, selected }],
+  })),
+  setAuditReport: (r) => set({ auditReport: r }),
+  setReviewRunning: (v) => set({ reviewRunning: v }),
+  setReviewPhase: (v) => set({ reviewPhase: v }),
+  setReviewProgress: (v) => set({ reviewProgress: v }),
 }), {
   name: 'design-review-store',
   partialize: (s) => ({

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown, ClipboardCheck, PenLine } from 'lucide-react'
 import { Project, ProjectVersion } from '@/types'
-import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion } from '@/lib/db'
+import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion, getAuditReport } from '@/lib/db'
 import { useAppStore } from '@/store'
 import dynamic from 'next/dynamic'
 
@@ -45,12 +45,18 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [reviewVersionIds, setReviewVersionIds] = useState<Set<string>>(new Set())
   const newInputRef = useRef<HTMLInputElement>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     getProjects().then(list => setProject(list.find(p => p.id === projectId) ?? null))
-    getVersions(projectId).then(setVersions)
+    getVersions(projectId).then(async (vs) => {
+      setVersions(vs)
+      // Check which versions have review data
+      const checks = await Promise.all(vs.map(v => getAuditReport(v.id).then(r => r ? v.id : null)))
+      setReviewVersionIds(new Set(checks.filter((id): id is string => id !== null)))
+    })
   }, [projectId])
 
   useEffect(() => {
@@ -302,10 +308,71 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Dual-entry buttons when both workbench and review data exist */}
+                      {hasVersionContent(version.id) && reviewVersionIds.has(version.id) && (
+                        <>
+                          <button
+                            onClick={e => { e.stopPropagation(); router.push(getVersionEntryUrl(version.id)) }}
+                            title="进入走查工作台"
+                            className="flex items-center gap-1.5"
+                            style={{
+                              fontSize: 11, fontWeight: 500,
+                              color: T.ink,
+                              background: T.warm,
+                              border: `1px solid ${T.border}`,
+                              borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                            }}
+                            onMouseOver={e => (e.currentTarget.style.borderColor = T.charcoal)}
+                            onMouseOut={e => (e.currentTarget.style.borderColor = T.border)}
+                          >
+                            <PenLine size={11} strokeWidth={1.5} />
+                            走查
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); router.push(`/project/${projectId}/version/${version.id}/analysis`) }}
+                            title="进入评审工作台"
+                            className="flex items-center gap-1.5"
+                            style={{
+                              fontSize: 11, fontWeight: 500,
+                              color: T.ink,
+                              background: T.warm,
+                              border: `1px solid ${T.border}`,
+                              borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                            }}
+                            onMouseOver={e => (e.currentTarget.style.borderColor = T.charcoal)}
+                            onMouseOut={e => (e.currentTarget.style.borderColor = T.border)}
+                          >
+                            <ClipboardCheck size={11} strokeWidth={1.5} />
+                            评审
+                          </button>
+                        </>
+                      )}
+
+                      {/* Review-only entry button */}
+                      {!hasVersionContent(version.id) && reviewVersionIds.has(version.id) && (
+                        <button
+                          onClick={e => { e.stopPropagation(); router.push(`/project/${projectId}/version/${version.id}/analysis`) }}
+                          title="进入评审工作台"
+                          className="flex items-center gap-1.5"
+                          style={{
+                            fontSize: 11, fontWeight: 500,
+                            color: T.ink,
+                            background: T.warm,
+                            border: `1px solid ${T.border}`,
+                            borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                          }}
+                          onMouseOver={e => (e.currentTarget.style.borderColor = T.charcoal)}
+                          onMouseOut={e => (e.currentTarget.style.borderColor = T.border)}
+                        >
+                          <ClipboardCheck size={11} strokeWidth={1.5} />
+                          查看评审
+                        </button>
+                      )}
+
                       <button
                         onClick={e => { e.stopPropagation(); setShowReportModal(true) }}
-                        title="导出报告"
+                        title="导出走查报告"
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
                         onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
                         onMouseOut={e => (e.currentTarget.style.color = T.mist)}
@@ -330,14 +397,17 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                       >
                         <Trash2 size={13} strokeWidth={1.5} />
                       </button>
-                      <button
-                        onClick={() => router.push(getVersionEntryUrl(version.id))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <ChevronRight size={16} strokeWidth={1.5} />
-                      </button>
+                      {/* Only show the chevron if no dual-entry buttons are present */}
+                      {!(hasVersionContent(version.id) && reviewVersionIds.has(version.id)) && !reviewVersionIds.has(version.id) && (
+                        <button
+                          onClick={() => router.push(getVersionEntryUrl(version.id))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                          onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+                          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                        >
+                          <ChevronRight size={16} strokeWidth={1.5} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
