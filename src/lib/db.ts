@@ -1,7 +1,9 @@
 import { Project, ProjectVersion } from '@/types'
 
 const DB_NAME = 'design-review-db'
-const DB_VERSION = 1
+// Keep at 2: some browsers already have version 2 from a previous deploy.
+// Opening a lower version than what exists causes a VersionError.
+const DB_VERSION = 2
 
 let _db: IDBDatabase | null = null
 
@@ -17,6 +19,11 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('versions')) {
         const vs = db.createObjectStore('versions', { keyPath: 'id' })
         vs.createIndex('projectId', 'projectId', { unique: false })
+      }
+      // Kept from v2 migration — harmless if unused
+      if (!db.objectStoreNames.contains('audit_reports')) {
+        const ar = db.createObjectStore('audit_reports', { keyPath: 'id' })
+        ar.createIndex('versionId', 'versionId', { unique: false })
       }
     }
     req.onsuccess = e => {
