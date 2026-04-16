@@ -34,16 +34,16 @@ const MODEL_PRESETS: Record<AIProvider, string[]> = {
   anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-3-5-sonnet-20241022'],
   openai:    ['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision-preview'],
   google:    [
-    'gemini-3.1-pro-preview',
-    'gemini-3-flash-preview',
-    'gemini-3.1-flash-lite-preview',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
-    'gemini-1.0-pro',
-    'gemini-1.0-flash',
+    // Gemini 2.5 series (supports deep thinking)
+    'gemini-2.5-pro-preview-05-06',
+    'gemini-2.5-flash-preview-04-17',
+    // Gemini 2.0 series
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    // Gemini 1.x — deprecated by Google in 2025, will return "Model not found"
+    // 'gemini-1.5-pro',
+    // 'gemini-1.5-flash',
+    // 'gemini-1.0-pro',
   ],
   zhipu:     ['glm-4.6v-flash', 'glm-4v-flash', 'glm-4v-plus', 'glm-4v'],
   custom:    [],
@@ -257,7 +257,7 @@ function ConfigCard({
               </WasiSelect>
               {config.provider === 'google' && (
                 <p style={{ fontSize: 10, color: T.mist, marginTop: 6, lineHeight: 1.4 }}>
-                  Google Gemini 模型请使用官方模型名称，推荐：gemini-2.5-pro-preview-05-06 / gemini-2.5-flash-preview-04-17。
+                  Gemini 1.x 系列已于 2025 年停用，请使用 2.0 / 2.5 系列。推荐：gemini-2.5-pro-preview-05-06 或 gemini-2.0-flash。
                   API Key 需为 Google Cloud API key（例如以 AIza 开头），也支持 OAuth Bearer token。
                 </p>
               )}
