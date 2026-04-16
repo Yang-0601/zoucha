@@ -30,21 +30,42 @@ const PROVIDER_DEFAULT_BASE_URL: Partial<Record<AIProvider, string>> = {
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
 }
 
+// Google Gemini models grouped by series for optgroup display
+// Gemini 1.x series was retired by Google in 2025 and is excluded
+const GOOGLE_MODEL_GROUPS: { label: string; tag: string; models: string[] }[] = [
+  {
+    label: 'Gemini 3 系列',
+    tag: 'gemini3',
+    models: [
+      'gemini-3.1-pro-preview',
+      'gemini-3-flash-preview',
+      'gemini-3.1-flash-lite-preview',
+    ],
+  },
+  {
+    label: 'Gemini 2.5 系列（深度推理）',
+    tag: 'gemini25',
+    models: [
+      'gemini-2.5-pro-preview-05-06',
+      'gemini-2.5-flash-preview-04-17',
+      'gemini-2.5-flash-lite',
+    ],
+  },
+  {
+    label: 'Gemini 2.0 系列',
+    tag: 'gemini20',
+    models: [
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
+      'gemini-2.0-pro-exp',
+    ],
+  },
+]
+
 const MODEL_PRESETS: Record<AIProvider, string[]> = {
   anthropic: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-3-5-sonnet-20241022'],
   openai:    ['gpt-4o', 'gpt-4-turbo', 'gpt-4-vision-preview'],
-  google:    [
-    // Gemini 2.5 series (supports deep thinking)
-    'gemini-2.5-pro-preview-05-06',
-    'gemini-2.5-flash-preview-04-17',
-    // Gemini 2.0 series
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
-    // Gemini 1.x — deprecated by Google in 2025, will return "Model not found"
-    // 'gemini-1.5-pro',
-    // 'gemini-1.5-flash',
-    // 'gemini-1.0-pro',
-  ],
+  google:    GOOGLE_MODEL_GROUPS.flatMap(g => g.models),
   zhipu:     ['glm-4.6v-flash', 'glm-4v-flash', 'glm-4v-plus', 'glm-4v'],
   custom:    [],
 }
@@ -249,19 +270,37 @@ function ConfigCard({
           <FieldLabel>模型</FieldLabel>
           {config.provider === 'custom' ? (
             <WasiInput value={config.modelName} onChange={v => onChange({ modelName: v })} placeholder="模型 ID" />
-          ) : (
+          ) : config.provider === 'google' ? (
             <>
-              <WasiSelect value={config.modelName} onChange={v => onChange({ modelName: v })}>
+              <select
+                value={config.modelName}
+                onChange={e => onChange({ modelName: e.target.value })}
+                style={{
+                  width: '100%', fontSize: 12, color: T.charcoal,
+                  background: T.warm, border: `1px solid ${T.border}`,
+                  borderRadius: 6, padding: '6px 10px',
+                  outline: 'none', cursor: 'pointer',
+                }}
+              >
                 <option value="">选择模型</option>
-                {MODEL_PRESETS[config.provider].map(m => <option key={m} value={m}>{m}</option>)}
-              </WasiSelect>
-              {config.provider === 'google' && (
-                <p style={{ fontSize: 10, color: T.mist, marginTop: 6, lineHeight: 1.4 }}>
-                  Gemini 1.x 系列已于 2025 年停用，请使用 2.0 / 2.5 系列。推荐：gemini-2.5-pro-preview-05-06 或 gemini-2.0-flash。
-                  API Key 需为 Google Cloud API key（例如以 AIza 开头），也支持 OAuth Bearer token。
-                </p>
-              )}
+                {GOOGLE_MODEL_GROUPS.map(group => (
+                  <optgroup key={group.tag} label={group.label}>
+                    {group.models.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              <p style={{ fontSize: 10, color: T.mist, marginTop: 6, lineHeight: 1.5 }}>
+                Gemini 1.x 已停用。2.5 系列支持深度推理，质量最佳；2.0 系列速度更快。
+                API Key 填写 Google AI Studio 的密钥（AIza…）或 OAuth Bearer Token。
+              </p>
             </>
+          ) : (
+            <WasiSelect value={config.modelName} onChange={v => onChange({ modelName: v })}>
+              <option value="">选择模型</option>
+              {MODEL_PRESETS[config.provider].map(m => <option key={m} value={m}>{m}</option>)}
+            </WasiSelect>
           )}
         </div>
       </div>
