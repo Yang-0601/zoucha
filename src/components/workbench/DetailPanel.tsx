@@ -131,7 +131,7 @@ export default function DetailPanel() {
     // Also select it on the current diff
     const cur = Array.isArray(diff?.diffType) ? diff!.diffType : []
     if (!cur.includes(label)) {
-      updateDiff(diff!.id, { diffType: [...cur, label], edited: true, source: 'manual' as const })
+      updateDiff(diff!.id, { diffType: [...cur, label], edited: true })
     }
     setCustomLabel('')
   }
@@ -193,7 +193,7 @@ export default function DetailPanel() {
             return (
               <button
                 key={o.value}
-                onClick={() => updateDiff(diff.id, { severity: o.value, edited: true, source: 'manual' as const })}
+                onClick={() => updateDiff(diff.id, { severity: o.value, edited: true })}
                 className="flex items-center gap-2 transition-colors duration-150"
                 style={{
                   fontSize: 13,
@@ -230,7 +230,7 @@ export default function DetailPanel() {
                 onClick={() => {
                   const cur = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
                   const next = cur.includes(o.value) ? cur.filter(t => t !== o.value) : [...cur, o.value]
-                  updateDiff(diff.id, { diffType: next.length ? next : [o.value], edited: true, source: 'manual' as const })
+                  updateDiff(diff.id, { diffType: next.length ? next : [o.value], edited: true })
                 }}
                 className="transition-colors duration-150"
                 style={{
@@ -256,7 +256,7 @@ export default function DetailPanel() {
                   onClick={() => {
                     const cur = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
                     const next = cur.includes(label) ? cur.filter(t => t !== label) : [...cur, label]
-                    updateDiff(diff.id, { diffType: next.length ? next : cur, edited: true, source: 'manual' as const })
+                    updateDiff(diff.id, { diffType: next.length ? next : cur, edited: true })
                   }}
                   className="transition-colors duration-150"
                   style={{
@@ -328,7 +328,7 @@ export default function DetailPanel() {
         <WasiInput
           autoGrow
           value={diff.description}
-          onChange={v => updateDiff(diff.id, { description: v, edited: true, source: 'manual' as const })}
+          onChange={v => updateDiff(diff.id, { description: v, edited: true })}
         />
       </Section>
 
@@ -342,7 +342,7 @@ export default function DetailPanel() {
               rows={4}
               mono
               value={diff.cssHint}
-              onChange={v => updateDiff(diff.id, { cssHint: v, edited: true, source: 'manual' as const })}
+              onChange={v => updateDiff(diff.id, { cssHint: v, edited: true })}
             />
           </Section>
         </>
