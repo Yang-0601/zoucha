@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronRight, FolderOpen, Settings, Pencil, Clock, Check, X, GripVertical } from 'lucide-react'
-import { Project, ProjectVersion } from '@/types'
-import { getProjects, createProject, updateProject, deleteProject, createVersion } from '@/lib/db'
+import { Project } from '@/types'
+import { getProjects, createProject, updateProject, deleteProject } from '@/lib/db'
 import { useAppStore } from '@/store'
 
 const T = {
@@ -94,17 +94,6 @@ export default function ProjectListPage() {
     const now = Date.now()
     const projectId = genId()
     await createProject({ id: projectId, name, version, sortOrder: now, createdAt: now, updatedAt: now })
-
-    // Create first version for new project
-    const versionId = genId()
-    const newVer: ProjectVersion = {
-      id: versionId,
-      projectId,
-      name: version,
-      createdAt: now,
-      updatedAt: now,
-    }
-    await createVersion(newVer)
 
     setCreating(false)
     setNewName('')
