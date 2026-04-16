@@ -1,20 +1,42 @@
 import { useAppStore } from '@/store'
-import { Annotation, DiffRecord } from '@/types'
+import { Annotation, DiffRecord, ImageFile } from '@/types'
 import { runProvider, ParsedDiff } from './providers'
 
-/** Convert an image URL to a base64 string (without the data: prefix) */
-async function urlToBase64(url: string): Promise<string> {
-  const res = await fetch(url)
-  const blob = await res.blob()
+/** Maximum pixel width sent to AI. Larger = better detail, larger payload. */
+const AI_ANALYSIS_WIDTH = 1200
+
+/**
+ * Convert an ImageFile to base64 for AI analysis using the original-resolution
+ * image (imgFile.url), capped at AI_ANALYSIS_WIDTH. This gives the model far
+ * more detail than the canvas display width (typically 375px).
+ */
+async function imageToBase64ForAI(imgFile: ImageFile): Promise<string> {
+  // If original fits within the limit, fetch directly.
+  if (imgFile.width <= AI_ANALYSIS_WIDTH) {
+    const res = await fetch(imgFile.url)
+    const blob = await res.blob()
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve((reader.result as string).split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
+
+  // Otherwise scale down to AI_ANALYSIS_WIDTH via canvas.
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // Strip "data:image/png;base64," prefix
-      resolve(result.split(',')[1])
+    const img = new Image()
+    img.onload = () => {
+      const ratio = AI_ANALYSIS_WIDTH / img.naturalWidth
+      const h = Math.round(img.naturalHeight * ratio)
+      const canvas = document.createElement('canvas')
+      canvas.width = AI_ANALYSIS_WIDTH
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(img, 0, 0, AI_ANALYSIS_WIDTH, h)
+      resolve(canvas.toDataURL('image/png').split(',')[1])
     }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+    img.onerror = reject
+    img.src = imgFile.url
   })
 }
 
@@ -53,14 +75,13 @@ export async function runAnalysis() {
   setAnalysisPhase('准备图片…')
 
   try {
-    // Use scaled URLs when available (they match the canvas viewport)
-    const designUrl = designImage.scaledUrl ?? designImage.url
-    const liveUrl   = liveImage.scaledUrl   ?? liveImage.url
-
-    setAnalysisPhase('上传图片…')
+    // Send original-resolution images to AI (capped at AI_ANALYSIS_WIDTH).
+    // Canvas uses a smaller targetWidth for display; positions are normalised 0-1
+    // so they map back to canvas coordinates correctly regardless of resolution.
+    setAnalysisPhase('准备图片…')
     const [designBase64, liveBase64] = await Promise.all([
-      urlToBase64(designUrl),
-      urlToBase64(liveUrl),
+      imageToBase64ForAI(designImage),
+      imageToBase64ForAI(liveImage),
     ])
 
     // Current max index across existing annotations
