@@ -1,5 +1,5 @@
 import { AIModelConfig, DiffType, Severity } from '@/types'
-import { SYSTEM_PROMPT, buildUserMessage } from './prompt'
+import { SYSTEM_PROMPT, buildUserMessage, buildInstructions } from './prompt'
 
 export interface ParsedDiff {
   title: string
@@ -106,11 +106,22 @@ async function runOpenAI(
   designBase64: string,
   liveBase64: string,
   cb: AnalysisCallbacks,
+  /** When true, prepend a soft chain-of-thought instruction (used for ZhipuAI). */
+  softCoT = false,
 ) {
   const baseUrl = (config.baseUrl ?? 'https://api.openai.com').replace(/\/$/, '')
   cb.onProgress(10, '连接模型…')
 
-  const instructions = config.customPrompt ?? ''
+  // Fix: use buildInstructions so language + precision settings are included
+  const instructions = buildInstructions(config)
+  // Soft CoT: ask model to briefly reason region-by-region before outputting JSON.
+  // extractDiffs() already skips any pre-JSON text, so this is safe.
+  const cotPrefix = softCoT
+    ? (config.language === 'zh'
+        ? '请先用简短文字逐区描述你在两张图片中观察到的差异，再输出 JSON 数组。\n'
+        : 'First briefly note the differences you observe region by region, then output the JSON array.\n')
+    : ''
+
   const res = await fetch(chatCompletionsUrl(baseUrl), {
     method: 'POST',
     signal: cb.signal,
@@ -128,7 +139,7 @@ async function runOpenAI(
           content: [
             { type: 'image_url', image_url: { url: `data:image/png;base64,${designBase64}` } },
             { type: 'image_url', image_url: { url: `data:image/png;base64,${liveBase64}` } },
-            { type: 'text', text: `Image 1 is the design mockup. Image 2 is the live implementation.\n${instructions}` },
+            { type: 'text', text: `${cotPrefix}Image 1 is the design mockup. Image 2 is the live implementation.\n${instructions}` },
           ],
         },
       ],
@@ -150,24 +161,41 @@ async function runOpenAI(
 
 // ── Google ───────────────────────────────────────────────────────────────────
 
+/** Gemini 2.5 series supports thinkingConfig for internal reasoning. */
+function supportsGeminiThinking(modelName: string): boolean {
+  return /gemini-2\.5/i.test(modelName)
+}
+
 async function runGoogle(
   config: AIModelConfig,
   designBase64: string,
   liveBase64: string,
   cb: AnalysisCallbacks,
 ) {
+  const thinking = supportsGeminiThinking(config.modelName)
+  cb.onProgress(10, thinking ? '连接模型（深度推理中）…' : '连接模型…')
+
   const baseUrl = (config.baseUrl?.trim() || 'https://generativelanguage.googleapis.com').replace(/\/$/, '')
   const useApiKey = /^AIza[0-9A-Za-z_-]+$/.test(config.apiKey)
   const url = useApiKey
     ? `${baseUrl}/v1beta/models/${encodeURIComponent(config.modelName)}:generateContent?key=${encodeURIComponent(config.apiKey)}`
     : `${baseUrl}/v1beta/models/${encodeURIComponent(config.modelName)}:generateContent`
 
-  cb.onProgress(10, '连接模型…')
-
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (!useApiKey) headers.Authorization = `Bearer ${config.apiKey}`
 
-  const instructions = config.customPrompt ?? ''
+  // Fix: use buildInstructions so language + precision settings are included
+  const instructions = buildInstructions(config)
+
+  const generationConfig: Record<string, unknown> = {
+    maxOutputTokens: thinking ? 16384 : 8192,
+  }
+  if (thinking) {
+    // thinkingBudget: tokens the model may spend on internal reasoning.
+    // The thinking process is invisible in the response; only the final answer is returned.
+    generationConfig.thinkingConfig = { thinkingBudget: 8000 }
+  }
+
   const res = await fetch(url, {
     method: 'POST',
     signal: cb.signal,
@@ -182,7 +210,7 @@ async function runGoogle(
           { text: `Image 1 is the design mockup. Image 2 is the live implementation.\n${instructions}` },
         ],
       }],
-      generationConfig: { maxOutputTokens: 8192 },
+      generationConfig,
     }),
   })
 
@@ -235,7 +263,7 @@ export async function runProvider(
     case 'anthropic': return runAnthropic(config, designBase64, liveBase64, cb)
     case 'openai':    return runOpenAI(config, designBase64, liveBase64, cb)
     case 'google':    return runGoogle(config, designBase64, liveBase64, cb)
-    case 'zhipu':     return runOpenAI({ ...config, baseUrl: config.baseUrl ?? 'https://open.bigmodel.cn/api/paas/v4' }, designBase64, liveBase64, cb)
+    case 'zhipu':     return runOpenAI({ ...config, baseUrl: config.baseUrl ?? 'https://open.bigmodel.cn/api/paas/v4' }, designBase64, liveBase64, cb, true)
     case 'custom':    return runOpenAI(config, designBase64, liveBase64, cb)
   }
 }
