@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronRight, FolderOpen, Settings, Pencil, Clock, Check, X, GripVertical } from 'lucide-react'
 import { Project, ProjectVersion } from '@/types'
-import { getProjects, createProject, updateProject, deleteProject, getVersions, createVersion } from '@/lib/db'
+import { getProjects, createProject, updateProject, deleteProject, createVersion } from '@/lib/db'
 import { useAppStore } from '@/store'
 
 const T = {
@@ -110,9 +110,7 @@ export default function ProjectListPage() {
     setNewName('')
     setNewVersion('')
 
-    // Clear all in-memory state before entering new version
-    clearVersionState()
-    router.push(`/project/${projectId}/version/${versionId}`)
+    router.push(`/project/${projectId}`)
   }
 
   async function handleSaveEdit(project: Project) {
@@ -129,15 +127,8 @@ export default function ProjectListPage() {
     setDeleteConfirmId(null)
   }
 
-  async function handleProjectClick(projectId: string) {
-    const versions = await getVersions(projectId)
-    if (versions.length > 0) {
-      const latestVersion = versions[0]
-      clearVersionState()
-      router.push(`/project/${projectId}/version/${latestVersion.id}`)
-    } else {
-      router.push(`/project/${projectId}`)
-    }
+  function handleProjectClick(projectId: string) {
+    router.push(`/project/${projectId}`)
   }
 
   return (
