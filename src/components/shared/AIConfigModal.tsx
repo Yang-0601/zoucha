@@ -30,6 +30,49 @@ const PROVIDER_DEFAULT_BASE_URL: Partial<Record<AIProvider, string>> = {
   zhipu: 'https://open.bigmodel.cn/api/paas/v4',
 }
 
+// ── Prompt templates ─────────────────────────────────────────────────────────
+
+const PROMPT_TEMPLATES: { label: string; desc: string; prompt: string }[] = [
+  {
+    label: '通用精细',
+    desc: '逐区精细对比，输出色值与像素数值',
+    prompt: `逐区精细对比两张图片，重点输出以下信息：
+- 颜色：精确十六进制色值（设计值 vs 实现值）
+- 间距：以 px 为单位说明偏差方向与数值
+- 字体：字号、字重、行高的具体数值偏差
+- 尺寸：元素宽高的像素差异
+每条 description 必须包含具体数值，禁止模糊表述（如"稍微偏移"）。`,
+  },
+  {
+    label: '移动端',
+    desc: '针对移动端 UI，检查触控目标与响应式布局',
+    prompt: `这是移动端 UI，重点检查：
+- 可点击元素（按钮、链接）的触控区域是否 ≥ 44×44pt
+- 文字在小屏幕上的可读性（字号 ≥ 12px）
+- 左右边距是否一致，内容是否对齐屏幕安全区
+- 图片与图标是否被裁切或溢出`,
+  },
+  {
+    label: '组件一致性',
+    desc: '以设计系统视角检查组件规范一致性',
+    prompt: `以设计系统规范视角审查，重点检查：
+- 相同类型组件（按钮、卡片、输入框）的圆角、阴影、边框是否统一
+- 色彩是否严格使用 Design Token（避免出现随意色值）
+- 间距是否符合 4/8px 网格规律
+- 图标尺寸与描边粗细是否与设计稿完全一致`,
+  },
+  {
+    label: '文字排版',
+    desc: '专注文字排版细节：字号、行高、字重、对齐',
+    prompt: `专注排版差异，检查每个文字元素的：
+- 字号（px）与字重（100–900）
+- 行高（line-height）与字间距（letter-spacing）
+- 文字颜色与透明度
+- 对齐方式（左对齐 / 居中 / 右对齐）
+- 截断与换行行为是否与设计稿一致`,
+  },
+]
+
 // Google Gemini models grouped by series for optgroup display
 // Gemini 1.x series was retired by Google in 2025 and is excluded
 const GOOGLE_MODEL_GROUPS: { label: string; tag: string; models: string[] }[] = [
@@ -369,22 +412,78 @@ function ConfigCard({
       </div>
 
       {/* Custom prompt */}
-      <div>
-        <FieldLabel>自定义 Prompt（可选）</FieldLabel>
-        <textarea
-          rows={7}
-          placeholder="如：重点关注按钮颜色一致性…"
-          value={config.customPrompt ?? ''}
-          onChange={e => onChange({ customPrompt: e.target.value })}
-          style={{
-            width: '100%', fontSize: 12, color: T.charcoal,
-            background: T.warm, border: `1px solid ${T.border}`,
-            borderRadius: 6, padding: '6px 10px', outline: 'none',
-            resize: 'none', lineHeight: 1.6,
-          }}
-          onFocus={e => (e.currentTarget.style.borderColor = T.charcoal)}
-          onBlur={e => (e.currentTarget.style.borderColor = T.border)}
-        />
+      <div className="flex flex-col gap-2">
+        {/* Header row */}
+        <div className="flex items-center justify-between">
+          <FieldLabel>追加提示词（可选）</FieldLabel>
+          {(config.customPrompt ?? '').length > 0 && (
+            <button
+              onClick={() => onChange({ customPrompt: '' })}
+              style={{ fontSize: 10, color: T.mist, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              onMouseOver={e => (e.currentTarget.style.color = '#B85C5C')}
+              onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+            >
+              清空
+            </button>
+          )}
+        </div>
+
+        {/* Scene template chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {PROMPT_TEMPLATES.map(tpl => {
+            const active = (config.customPrompt ?? '').trim() === tpl.prompt.trim()
+            return (
+              <button
+                key={tpl.label}
+                title={tpl.desc}
+                onClick={() => onChange({ customPrompt: active ? '' : tpl.prompt })}
+                style={{
+                  fontSize: 11,
+                  color: active ? T.paper : T.ink,
+                  background: active ? T.charcoal : T.warm,
+                  border: `1px solid ${active ? T.charcoal : T.border}`,
+                  borderRadius: 20,
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
+                  fontWeight: active ? 600 : 400,
+                }}
+                onMouseOver={e => { if (!active) e.currentTarget.style.borderColor = T.charcoal }}
+                onMouseOut={e => { if (!active) e.currentTarget.style.borderColor = T.border }}
+              >
+                {tpl.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Textarea */}
+        <div style={{ position: 'relative' }}>
+          <textarea
+            rows={5}
+            placeholder="追加给模型的额外指令，例如：重点检查按钮圆角、字号是否一致…"
+            value={config.customPrompt ?? ''}
+            onChange={e => onChange({ customPrompt: e.target.value })}
+            style={{
+              width: '100%', fontSize: 12, color: T.charcoal,
+              background: T.warm, border: `1px solid ${T.border}`,
+              borderRadius: 6, padding: '8px 10px 22px', outline: 'none',
+              resize: 'vertical', lineHeight: 1.65,
+            }}
+            onFocus={e => (e.currentTarget.style.borderColor = T.charcoal)}
+            onBlur={e => (e.currentTarget.style.borderColor = T.border)}
+          />
+          <span style={{
+            position: 'absolute', bottom: 6, right: 10,
+            fontSize: 10, color: T.smoke, pointerEvents: 'none',
+          }}>
+            {(config.customPrompt ?? '').length} 字
+          </span>
+        </div>
+
+        <p style={{ fontSize: 10, color: T.smoke, lineHeight: 1.5 }}>
+          此内容会追加到系统提示词末尾，用于补充场景信息或聚焦特定检查维度，不会覆盖基础分析规则。
+        </p>
       </div>
 
       {/* Test connection */}
