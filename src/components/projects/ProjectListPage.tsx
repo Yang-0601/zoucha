@@ -99,7 +99,7 @@ export default function ProjectListPage() {
     setNewName('')
     setNewVersion('')
 
-    router.push(`/project/${projectId}`)
+    await loadProjects()
   }
 
   async function handleSaveEdit(project: Project) {

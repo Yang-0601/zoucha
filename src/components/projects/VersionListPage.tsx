@@ -97,9 +97,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     setCreating(false)
     setNewName('')
 
-    // Clear all in-memory state before entering new version
-    clearVersionState()
-    router.push(`/project/${projectId}/version/${version.id}`)
+    setVersions(await getVersions(projectId))
   }
 
   async function handleRename(version: ProjectVersion) {
