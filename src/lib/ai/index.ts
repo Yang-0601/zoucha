@@ -93,9 +93,10 @@ export async function runAnalysis() {
       const annId  = crypto.randomUUID()
       const diffId = crypto.randomUUID()
 
-      // Convert normalized position to canvas pixels
-      const canvasW = designImage.scaledWidth  ?? designImage.width
-      const canvasH = designImage.scaledHeight ?? designImage.height
+      // Convert normalized position to live-image canvas pixels
+      // (AI positions are in Image 2 = live image coordinate space)
+      const canvasW = liveImage.scaledWidth  ?? liveImage.width
+      const canvasH = liveImage.scaledHeight ?? liveImage.height
 
       const annotation: Annotation = {
         id: annId,

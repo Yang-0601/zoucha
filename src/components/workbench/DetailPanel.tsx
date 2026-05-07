@@ -390,6 +390,22 @@ export default function DetailPanel() {
             )
           })}
         </div>
+        {annotation.style === 'C' && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 12, color: T.mist }}>填充不透明度</span>
+              <span style={{ fontSize: 12, color: T.charcoal, fontWeight: 500 }}>
+                {annotation.fillOpacity ?? 20}%
+              </span>
+            </div>
+            <input
+              type="range" min={10} max={80} step={5}
+              value={annotation.fillOpacity ?? 20}
+              onChange={e => updateAnnotation(annotation.id, { fillOpacity: Number(e.target.value) })}
+              style={{ width: '100%', accentColor: T.charcoal }}
+            />
+          </div>
+        )}
       </Section>
 
       {/* 气泡位置 — B / C */}

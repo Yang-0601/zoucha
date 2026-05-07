@@ -71,6 +71,7 @@ interface AppState {
   // Annotation mode
   annotationMode: boolean
   pendingAnnotationStyle: import('@/types').AnnotationStyle
+  pendingFillOpacity: number
 
   // AI config
   aiConfigs: AIModelConfig[]
@@ -82,6 +83,7 @@ interface AppState {
   // Actions
   setAnnotationMode: (v: boolean) => void
   setPendingAnnotationStyle: (s: import('@/types').AnnotationStyle) => void
+  setPendingFillOpacity: (v: number) => void
   setDesignImage: (img: ImageFile | null) => void
   setLiveImage: (img: ImageFile | null) => void
   setTargetWidth: (w: number) => void
@@ -180,9 +182,11 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
 
   annotationMode: false,
   pendingAnnotationStyle: 'A' as import('@/types').AnnotationStyle,
+  pendingFillOpacity: 20,
 
   setAnnotationMode: (v) => set({ annotationMode: v }),
   setPendingAnnotationStyle: (s) => set({ pendingAnnotationStyle: s }),
+  setPendingFillOpacity: (v) => set({ pendingFillOpacity: v }),
   setDesignImage: (img) => set({ designImage: img }),
   setLiveImage: (img) => set({ liveImage: img }),
   setTargetWidth: (w) => set({ targetWidth: w }),
