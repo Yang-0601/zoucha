@@ -314,6 +314,7 @@ function ImagePane({
   const {
     annotationMode,
     pendingAnnotationStyle,
+    pendingFillOpacity,
     annotations,
     addAnnotation,
     addDiff,
@@ -364,6 +365,7 @@ function ImagePane({
       locked: false,
       diffId,
       source: 'manual',
+      fillOpacity: pendingAnnotationStyle === 'C' ? pendingFillOpacity : undefined,
     })
 
     addDiff({
@@ -381,7 +383,7 @@ function ImagePane({
     setAnnotationMode(false)
   }, [
     isLive, annotationMode, spaceDown, vs, RULER_OFFSET,
-    annotations.length, pendingAnnotationStyle,
+    annotations.length, pendingAnnotationStyle, pendingFillOpacity,
     addAnnotation, addDiff, setAnnotationMode,
   ])
 
@@ -771,7 +773,7 @@ function OverlayCanvas({
         )}
       </div>
 
-      <AnnotationLayer />
+      <AnnotationLayer viewState={activeLiveVS} />
 
       {/* Blend mode picker — heatmap mode only */}
       {mode === 'overlay-heatmap' && (
@@ -946,7 +948,7 @@ function SliderMode({
         </div>
       </div>
 
-      <AnnotationLayer />
+      <AnnotationLayer viewState={vs} />
 
       {/* Slider handle — screen space, always aligned with clip edge */}
       <div

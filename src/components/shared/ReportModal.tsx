@@ -34,7 +34,11 @@ const DIFF_TYPE_LABEL: Record<string, string> = {
   missing: '缺失', extra: '多余', image: '图片',
 }
 const ANN_COLOR: Record<string, string> = {
-  high: '#ef4444', mid: '#f97316', low: '#9ca3af',
+  high: '#E5404A', mid: '#F0A020', low: '#6E8FAD',
+}
+
+function fillAlpha(opacity: number): string {
+  return Math.round(opacity * 255 / 100).toString(16).padStart(2, '0')
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -49,7 +53,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Wrap text onto canvas ctx (char-level, supports CJK), returns lines drawn */
+/** Wrap text onto canvas ctx (char-level, supports CJK and \n), returns lines drawn */
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -58,42 +62,48 @@ function wrapText(
   maxWidth: number,
   lineHeight: number,
 ): number {
-  const chars = Array.from(text)
-  let line = ''
-  let lines = 0
-  for (const char of chars) {
-    const test = line + char
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, y + lines * lineHeight)
-      line = char
-      lines++
-    } else {
-      line = test
+  let totalLines = 0
+  for (const paragraph of text.split('\n')) {
+    const chars = Array.from(paragraph)
+    let line = ''
+    for (const char of chars) {
+      const test = line + char
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, y + totalLines * lineHeight)
+        line = char
+        totalLines++
+      } else {
+        line = test
+      }
     }
+    ctx.fillText(line, x, y + totalLines * lineHeight)
+    totalLines++
   }
-  if (line) ctx.fillText(line, x, y + lines * lineHeight)
-  return lines + 1
+  return totalLines
 }
 
-/** Measure how many lines text will wrap to, without drawing */
+/** Measure how many lines text will wrap to (including \n), without drawing */
 function measureWrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
   maxWidth: number,
 ): number {
-  const chars = Array.from(text)
-  let line = ''
-  let lines = 0
-  for (const char of chars) {
-    const test = line + char
-    if (ctx.measureText(test).width > maxWidth && line) {
-      line = char
-      lines++
-    } else {
-      line = test
+  let totalLines = 0
+  for (const paragraph of text.split('\n')) {
+    const chars = Array.from(paragraph)
+    let line = ''
+    for (const char of chars) {
+      const test = line + char
+      if (ctx.measureText(test).width > maxWidth && line) {
+        line = char
+        totalLines++
+      } else {
+        line = test
+      }
     }
+    totalLines++
   }
-  return lines + 1
+  return totalLines
 }
 
 // ─── similarity computation ───────────────────────────────────────────────────
@@ -107,10 +117,28 @@ function computeBaseSimilarity(diffCount: number): number {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export default function ReportModal({ onClose }: { onClose: () => void }) {
-  const { diffs, annotations, designImage, liveImage } = useAppStore()
+  const { diffs, annotations, designImage, liveImage, confidenceThreshold } = useAppStore()
+
+  // Apply the same confidence filter as DiffList (not diffFilter — that's a view-only tab)
+  const visibleDiffs = diffs.filter(d => {
+    if (d.source === 'ai' && typeof d.confidence === 'number' && d.confidence < confidenceThreshold) return false
+    return true
+  })
+
+  // Sequential index map: annotationId → 1-based position in visibleDiffs
+  const annDisplayIndex = new Map<string, number>()
+  visibleDiffs.forEach((d, i) => annDisplayIndex.set(d.annotationId, i + 1))
+
+  // Use diff severity as authoritative (same as AnnotationLayer)
+  const diffSeverityMap = new Map(visibleDiffs.map(d => [d.annotationId, d.severity]))
+
+  // Annotations remapped to sequential indices, filtered to visible diffs only
+  const visibleAnnotations = annotations
+    .filter(a => annDisplayIndex.has(a.id))
+    .map(a => ({ ...a, index: annDisplayIndex.get(a.id)!, severity: diffSeverityMap.get(a.id) ?? a.severity }))
 
   const inputId = useId()
-  const baseSimilarity = computeBaseSimilarity(diffs.length)
+  const baseSimilarity = computeBaseSimilarity(visibleDiffs.length)
   const [similarity, setSimilarity] = useState(baseSimilarity)
   const [exporting, setExporting] = useState<'png' | 'pdf' | null>(null)
   const printFrameRef = useRef<HTMLIFrameElement | null>(null)
@@ -133,7 +161,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       ctx.drawImage(img, 0, 0, W, H)
-      for (const ann of annotations) {
+      for (const ann of visibleAnnotations) {
         const sx = ann.position.x * scale
         const sy = ann.position.y * scale
         if (ann.rect && (ann.style === 'B' || ann.style === 'C')) {
@@ -142,7 +170,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
           const rw = ann.rect.w * scale
           const rh = ann.rect.h * scale
           if (ann.style === 'C') {
-            ctx.fillStyle = `${ANN_COLOR[ann.severity]}44`
+            ctx.fillStyle = `${ANN_COLOR[ann.severity]}${fillAlpha(ann.fillOpacity ?? 20)}`
             ctx.fillRect(rx, ry, rw, rh)
           } else {
             ctx.strokeStyle = ANN_COLOR[ann.severity]
@@ -168,11 +196,11 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       }
     }
     img.src = liveImage.scaledUrl ?? liveImage.url
-  }, [liveImage, annotations])
+  }, [liveImage, visibleAnnotations])
 
   // ── type count stats ──────────────────────────────────────────────────────
   const typeCounts: Record<string, number> = {}
-  for (const d of diffs) {
+  for (const d of visibleDiffs) {
     for (const t of d.diffType) {
       typeCounts[t] = (typeCounts[t] ?? 0) + 1
     }
@@ -191,7 +219,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       const STATS_H = 140
       const IMG_SECTION_H = 460  // images + label
       const TABLE_HEADER_H = 40
-      const DESC_COL_W = 340
+      const DESC_COL_W = 420
       const LINE_H = 16
       const ROW_VPAD = 28  // vertical padding per row
 
@@ -199,7 +227,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       const measureCanvas = document.createElement('canvas')
       const measureCtx = measureCanvas.getContext('2d')!
       measureCtx.font = `400 11px -apple-system, "PingFang SC", sans-serif`
-      const rowData = diffs.map(d => {
+      const rowData = visibleDiffs.map(d => {
         const lineCount = measureWrapLines(measureCtx, d.description || d.title, DESC_COL_W - 16)
         return { lineCount, height: Math.max(44, lineCount * LINE_H + ROW_VPAD) }
       })
@@ -236,9 +264,9 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       const statsY = cy
       const statBoxW = (W - PAD * 2 - 12 * 3) / 4
       const statItems = [
-        { label: '差异总数', value: String(diffs.length) },
-        { label: '必须修复', value: String(diffs.filter(d => d.severity === 'high').length), color: T.red },
-        { label: '建议修复', value: String(diffs.filter(d => d.severity === 'mid').length), color: T.amber },
+        { label: '差异总数', value: String(visibleDiffs.length) },
+        { label: '必须修复', value: String(visibleDiffs.filter(d => d.severity === 'high').length), color: T.red },
+        { label: '建议修复', value: String(visibleDiffs.filter(d => d.severity === 'mid').length), color: T.amber },
         { label: '页面相似度', value: `${similarity}%`, color: similarity >= 80 ? T.moss : T.amber },
       ]
       for (let i = 0; i < statItems.length; i++) {
@@ -284,7 +312,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       const liveOX = liveX + (imgAreaW - liveRW) / 2
       const liveOY = imgY + (imgAreaH - liveRH) / 2
 
-      for (const ann of annotations) {
+      for (const ann of visibleAnnotations) {
         const sx = liveOX + ann.position.x * liveScale
         const sy = liveOY + ann.position.y * liveScale
 
@@ -295,7 +323,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
           const rw = ann.rect.w * liveScale
           const rh = ann.rect.h * liveScale
           if (ann.style === 'C') {
-            ctx.fillStyle = `${ANN_COLOR[ann.severity]}44`
+            ctx.fillStyle = `${ANN_COLOR[ann.severity]}${fillAlpha(ann.fillOpacity ?? 20)}`
             ctx.fillRect(rx, ry, rw, rh)
           } else {
             ctx.strokeStyle = ANN_COLOR[ann.severity]
@@ -360,9 +388,8 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
 
       // data rows (variable height)
       let rowOffsetY = cy
-      for (let i = 0; i < diffs.length; i++) {
-        const d = diffs[i]
-        const ann = annotations.find(a => a.id === d.annotationId)
+      for (let i = 0; i < visibleDiffs.length; i++) {
+        const d = visibleDiffs[i]
         const { lineCount, height: rowH } = rowData[i]
         const rowY = rowOffsetY
         ctx.fillStyle = i % 2 === 0 ? T.paper : T.warm
@@ -377,13 +404,14 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
         // index (vertically centered)
         ctx.fillStyle = T.mist
         ctx.textAlign = 'center'
-        ctx.fillText(`#${ann?.index ?? i + 1}`, colX + 24, rowY + rowH / 2 + 4)
+        ctx.fillText(`#${i + 1}`, colX + 24, rowY + rowH / 2 + 4)
         ctx.textAlign = 'left'
         colX += cols[0].w
 
         // description (vertically centered block)
+        // First baseline = row_center - half_block_height + font_ascent_offset
         ctx.fillStyle = T.charcoal
-        const descStartY = rowY + (rowH - lineCount * LINE_H) / 2 + LINE_H - 3
+        const descStartY = rowY + rowH / 2 - ((lineCount - 1) * LINE_H) / 2 + 4
         wrapText(ctx, d.description || d.title, colX + 8, descStartY, cols[1].w - 16, LINE_H)
         colX += cols[1].w
 
@@ -416,24 +444,24 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
       console.error(e)
       setExporting(null)
     }
-  }, [designImage, liveImage, diffs, annotations, similarity, typeCounts])
+  }, [designImage, liveImage, visibleDiffs, visibleAnnotations, similarity, typeCounts])
 
   // ─── PDF export ────────────────────────────────────────────────────────────
   const exportPdf = useCallback(async () => {
     if (!designImage || !liveImage) return
     setExporting('pdf')
 
-    const annotatedLiveUrl = await createAnnotatedLiveImageUrl(liveImage, annotations)
+    const annotatedLiveUrl = await createAnnotatedLiveImageUrl(liveImage, visibleAnnotations)
     const typeRows = Object.entries(typeCounts)
       .map(([k, v]) => `<span class="tag">${DIFF_TYPE_LABEL[k] ?? k} <b>${v}</b></span>`)
       .join('')
 
-    const tableRows = diffs.map((d, i) => {
-      const ann = annotations.find(a => a.id === d.annotationId)
+    const tableRows = visibleDiffs.map((d, i) => {
       const types = d.diffType.map(t => DIFF_TYPE_LABEL[t] ?? t).join(' · ')
+      const descHtml = (d.description || d.title).replace(/\n/g, '<br>')
       return `<tr class="${i % 2 === 0 ? '' : 'alt'}">
-        <td class="center mist">#${ann?.index ?? i + 1}</td>
-        <td>${d.description || d.title}</td>
+        <td class="center mist">#${i + 1}</td>
+        <td>${descHtml}</td>
         <td style="color:${SEV_COLOR[d.severity]};font-weight:500">${SEV_LABEL[d.severity]}</td>
         <td class="mist">${types}</td>
         <td style="color:${d.source === 'ai' ? '#2563eb' : T.mist}">${d.source === 'ai' ? 'AI' : '手动'}</td>
@@ -469,7 +497,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
   .img-box .img-label { font-size:11px; color:${T.mist}; margin-top:6px; }
   table { width:100%; border-collapse:collapse; font-size:12px; }
   th { background:${T.charcoal}; color:#fff; padding:8px 10px; text-align:left; font-weight:500; font-size:11px; }
-  td { padding:9px 10px; border-bottom:1px solid ${T.border}; vertical-align:top; line-height:1.5; }
+  td { padding:9px 10px; border-bottom:1px solid ${T.border}; vertical-align:middle; line-height:1.5; }
   tr.alt td { background:${T.warm}; }
   .center { text-align:center; }
   .mist { color:${T.mist}; }
@@ -482,9 +510,9 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="val">${diffs.length}</div><div class="lbl">差异总数</div></div>
-  <div class="stat"><div class="val" style="color:${T.red}">${diffs.filter(d => d.severity === 'high').length}</div><div class="lbl">必须修复</div></div>
-  <div class="stat"><div class="val" style="color:${T.amber}">${diffs.filter(d => d.severity === 'mid').length}</div><div class="lbl">建议修复</div></div>
+  <div class="stat"><div class="val">${visibleDiffs.length}</div><div class="lbl">差异总数</div></div>
+  <div class="stat"><div class="val" style="color:${T.red}">${visibleDiffs.filter(d => d.severity === 'high').length}</div><div class="lbl">必须修复</div></div>
+  <div class="stat"><div class="val" style="color:${T.amber}">${visibleDiffs.filter(d => d.severity === 'mid').length}</div><div class="lbl">建议修复</div></div>
   <div class="stat"><div class="val" style="color:${simColor}">${similarity}%</div><div class="lbl">页面相似度</div></div>
 </div>
 
@@ -528,12 +556,12 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
         }, 500)
       }, 300)
     }
-  }, [diffs, annotations, designImage, liveImage, similarity, typeCounts])
+  }, [visibleDiffs, visibleAnnotations, designImage, liveImage, similarity, typeCounts])
 
   // ─── render ────────────────────────────────────────────────────────────────
-  const highCount = diffs.filter(d => d.severity === 'high').length
-  const midCount  = diffs.filter(d => d.severity === 'mid').length
-  const lowCount  = diffs.filter(d => d.severity === 'low').length
+  const highCount = visibleDiffs.filter(d => d.severity === 'high').length
+  const midCount  = visibleDiffs.filter(d => d.severity === 'mid').length
+  const lowCount  = visibleDiffs.filter(d => d.severity === 'low').length
 
   return (
     <div
@@ -574,7 +602,7 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
             <p style={{ fontSize: 11, color: T.mist, marginBottom: 10, letterSpacing: '0.06em' }}>差异概览</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
               {[
-                { label: '差异总数', value: diffs.length, color: T.charcoal },
+                { label: '差异总数', value: visibleDiffs.length, color: T.charcoal },
                 { label: '必须修复', value: highCount, color: T.red },
                 { label: '建议修复', value: midCount,  color: T.amber },
                 { label: '可接受',   value: lowCount,  color: T.gray },
@@ -651,9 +679,9 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
           {/* Diff table preview */}
           <div>
             <p style={{ fontSize: 11, color: T.mist, marginBottom: 8, letterSpacing: '0.06em' }}>
-              差异点列表（{diffs.length} 条）
+              差异点列表（{visibleDiffs.length} 条）
             </p>
-            {diffs.length === 0 ? (
+            {visibleDiffs.length === 0 ? (
               <p style={{ fontSize: 12, color: T.mist, textAlign: 'center', padding: '20px 0' }}>暂无差异记录</p>
             ) : (
               <div style={{ border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
@@ -668,15 +696,14 @@ export default function ReportModal({ onClose }: { onClose: () => void }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {diffs.map((d, i) => {
-                      const ann = annotations.find(a => a.id === d.annotationId)
+                    {visibleDiffs.map((d, i) => {
                       const types = d.diffType.map(t => DIFF_TYPE_LABEL[t] ?? t).join(' · ')
                       return (
-                        <tr key={d.id} style={{ background: i % 2 === 0 ? T.paper : T.warm }}>
+                        <tr key={d.id} style={{ background: i % 2 === 0 ? T.paper : T.warm, verticalAlign: 'middle' }}>
                           <td style={{ padding: '8px 10px', color: T.mist, whiteSpace: 'nowrap', borderBottom: `1px solid ${T.border}` }}>
-                            #{ann?.index ?? i + 1}
+                            #{i + 1}
                           </td>
-                          <td style={{ padding: '8px 10px', color: T.charcoal, lineHeight: 1.5, borderBottom: `1px solid ${T.border}` }}>
+                          <td style={{ padding: '8px 10px', color: T.charcoal, lineHeight: 1.5, whiteSpace: 'pre-wrap', borderBottom: `1px solid ${T.border}` }}>
                             {d.description || d.title}
                           </td>
                           <td style={{ padding: '8px 10px', color: SEV_COLOR[d.severity], fontWeight: 500, whiteSpace: 'nowrap', borderBottom: `1px solid ${T.border}` }}>
@@ -799,7 +826,7 @@ async function createAnnotatedLiveImageUrl(
       const rw = ann.rect.w
       const rh = ann.rect.h
       if (ann.style === 'C') {
-        ctx.fillStyle = `${ANN_COLOR[ann.severity]}44`
+        ctx.fillStyle = `${ANN_COLOR[ann.severity]}${fillAlpha(ann.fillOpacity ?? 20)}`
         ctx.fillRect(rx, ry, rw, rh)
       } else {
         ctx.strokeStyle = ANN_COLOR[ann.severity]

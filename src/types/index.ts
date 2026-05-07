@@ -23,6 +23,7 @@ export interface Annotation {
   implValue?: string
   delta?: string
   cssHint?: string
+  fillOpacity?: number  // 0-100, only used when style === 'C'; default 20
   edited?: boolean
   note?: string
 }

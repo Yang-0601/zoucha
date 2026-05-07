@@ -363,6 +363,7 @@ function TabShortcuts() {
         { keys: [['Space'], ['拖拽']], desc: '自由平移画布' },
         { keys: [['滚轮']], desc: '缩放（以鼠标为中心）' },
         { keys: [['Ctrl'], ['R']], desc: '切换标尺显示' },
+        { keys: [['Alt']], desc: '查看辅助线之间间距' },
       ],
     },
     {

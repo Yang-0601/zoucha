@@ -49,6 +49,7 @@ export default function DiffList() {
     diffs, annotations, activeAnnotationId, setActiveAnnotation,
     annotationMode, setAnnotationMode,
     pendingAnnotationStyle, setPendingAnnotationStyle,
+    pendingFillOpacity, setPendingFillOpacity,
     reorderDiffs, removeDiff, removeAnnotation,
     confidenceThreshold,
     diffFilter, setDiffFilter,
@@ -182,6 +183,20 @@ export default function DiffList() {
                 )
               })}
             </div>
+            {pendingAnnotationStyle === 'C' && (
+              <div style={{ marginTop: 10 }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: '#8A8680' }}>填充不透明度</span>
+                  <span style={{ fontSize: 12, color: '#252525', fontWeight: 500 }}>{pendingFillOpacity}%</span>
+                </div>
+                <input
+                  type="range" min={10} max={80} step={5}
+                  value={pendingFillOpacity}
+                  onChange={e => setPendingFillOpacity(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#252525' }}
+                />
+              </div>
+            )}
           </div>
           <Rule />
         </>
@@ -275,7 +290,7 @@ export default function DiffList() {
                           </svg>
                         )}
                       </span>
-                      <span style={{ fontSize: 12, color: '#8A8680' }}>#{annotation?.index ?? i + 1}</span>
+                      <span style={{ fontSize: 12, color: '#8A8680' }}>#{i + 1}</span>
                     </div>
                     <span className="flex items-center gap-1" style={{ fontSize: 12, color: '#8A8680' }}>
                       <span style={{

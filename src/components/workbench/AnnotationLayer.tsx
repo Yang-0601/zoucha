@@ -50,7 +50,7 @@ function applyCornerResize(
 
 function AnnotationBubble({
   ann, screenX, screenY, screenRect, isActive,
-  onSelect, onMoveBubble, onMoveRect, onResizeRect, scale,
+  onSelect, onMoveBubble, onMoveRect, onResizeRect, scale, displayIndex,
 }: {
   ann: Annotation
   screenX: number
@@ -62,6 +62,7 @@ function AnnotationBubble({
   onMoveRect: (dx: number, dy: number) => void
   onResizeRect: (corner: string, dx: number, dy: number) => void
   scale: number
+  displayIndex: number
 }) {
   const color = SEVERITY_COLOR[ann.severity] ?? '#6b7280'
   const isDashed = typeof ann.confidence === 'number' && ann.confidence < 70
@@ -172,7 +173,9 @@ function AnnotationBubble({
             height: screenRect.h,
             border: ann.style === 'C' ? 'none' : `2px solid ${color}`,
             borderRadius: 4,
-            backgroundColor: ann.style === 'C' ? `${color}33` : 'transparent',
+            backgroundColor: ann.style === 'C'
+              ? `${color}${Math.round((ann.fillOpacity ?? 20) * 255 / 100).toString(16).padStart(2, '0')}`
+              : 'transparent',
             cursor: ann.locked ? 'default' : rectCursor,
             pointerEvents: 'auto',
             boxSizing: 'border-box',
@@ -206,7 +209,7 @@ function AnnotationBubble({
         onMouseDown={onBubbleMouseDown}
         onClick={(e) => { e.stopPropagation(); onSelect() }}
       >
-        {ann.index}
+        {displayIndex}
         {ann.source === 'ai' && (
           <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-white flex items-center justify-center">
             <Bot size={6} color="white" />
@@ -248,18 +251,20 @@ export default function AnnotationLayer({
   const { scale, offsetX, offsetY } = vs
   const rulerOffset = showRuler ? RULER_SIZE : 0
 
-  // Apply the same filter as DiffList so canvas and list stay in sync
-  const visibleAnnotationIds = new Set(
-    diffs
-      .filter(d => {
-        if (d.source === 'ai' && typeof d.confidence === 'number' && d.confidence < confidenceThreshold) return false
-        if (diffFilter === 'ai') return d.source === 'ai'
-        if (diffFilter === 'manual') return d.source === 'manual'
-        return true
-      })
-      .map(d => d.annotationId)
-  )
-  const visibleAnnotations = annotations.filter(a => visibleAnnotationIds.has(a.id))
+  // Apply the same filter as DiffList, building annotations in diffs order so
+  // sequential numbers (1, 2, 3…) always match the diff list order after reordering.
+  const annById = new Map(annotations.map(a => [a.id, a]))
+  const visibleAnnotations = diffs
+    .filter(d => {
+      if (d.source === 'ai' && typeof d.confidence === 'number' && d.confidence < confidenceThreshold) return false
+      if (diffFilter === 'ai') return d.source === 'ai'
+      if (diffFilter === 'manual') return d.source === 'manual'
+      return true
+    })
+    .map(d => annById.get(d.annotationId))
+    .filter((a): a is Annotation => a !== undefined)
+  const annSequentialIndex = new Map<string, number>()
+  visibleAnnotations.forEach((a, i) => annSequentialIndex.set(a.id, i + 1))
 
   const toScreen = (imgX: number, imgY: number) => ({
     sx: imgX * scale + offsetX + rulerOffset,
@@ -324,6 +329,7 @@ export default function AnnotationLayer({
             screenRect={sr}
             isActive={isActive}
             scale={scale}
+            displayIndex={annSequentialIndex.get(ann.id) ?? ann.index}
             onSelect={() => setActiveAnnotation(ann.id)}
             onMoveBubble={(dx, dy) => handleMoveBubble(ann, dx, dy)}
             onMoveRect={(dx, dy) => handleMoveRect(ann, dx, dy)}
