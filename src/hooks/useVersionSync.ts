@@ -137,7 +137,21 @@ export function useVersionSync(versionId: string | null) {
     }, 1500)
 
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+        // Flush unsaved changes immediately when leaving the page
+        const s = useAppStore.getState()
+        if (s.designImage && s.liveImage) {
+          saveVersionData(versionId, {
+            designImage: s.designImage,
+            liveImage: s.liveImage,
+            annotations: s.annotations,
+            diffs: s.diffs,
+            guidelinesMap: s.guidelinesMap,
+          }).catch(err => console.error('[useVersionSync] flush save error', err))
+        }
+      }
     }
   }, [versionId, annotations, diffs, guidelinesMap, designImage, liveImage])
 }
