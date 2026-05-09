@@ -86,7 +86,7 @@ export async function saveVersionData(
   const { error } = await supabase
     .from('version_data')
     .upsert(row, { onConflict: 'version_id' })
-  if (error) throw error
+  if (error) throw new Error(error.message ?? JSON.stringify(error))
 }
 
 /**
@@ -120,6 +120,9 @@ export async function loadVersionData(
       : null,
     annotations: (data.annotations as Annotation[]) ?? [],
     diffs: (data.diffs as DiffRecord[]) ?? [],
-    guidelinesMap: (data.guidelines as Record<CompareMode, Guideline[]>) ?? EMPTY_GUIDELINES_MAP(),
+    guidelinesMap: {
+      ...EMPTY_GUIDELINES_MAP(),
+      ...((data.guidelines ?? {}) as Partial<Record<CompareMode, Guideline[]>>),
+    },
   }
 }

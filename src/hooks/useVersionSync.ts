@@ -132,7 +132,7 @@ export function useVersionSync(versionId: string | null) {
         await saveVersionData(versionId, { designImage, liveImage, annotations, diffs, guidelinesMap })
         lastSavedKeyRef.current = key
       } catch (err) {
-        console.error('[useVersionSync] auto-save error', err)
+        console.error('[useVersionSync] auto-save error', err instanceof Error ? err.message : err)
       }
     }, 1500)
 
