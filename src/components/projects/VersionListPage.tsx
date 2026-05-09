@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown } from 'lucide-react'
 import { Project, ProjectVersion } from '@/types'
 import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion } from '@/lib/db'
-import { getVersionIdsWithData } from '@/lib/versionData'
+import { getVersionIdsWithData, getVersionsFixStats, VersionFixStats } from '@/lib/versionData'
 import { useAppStore } from '@/store'
 import dynamic from 'next/dynamic'
 import RoleBadge from '@/components/role/RoleBadge'
@@ -45,19 +45,26 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [fixStats, setFixStats] = useState<Record<string, VersionFixStats>>({})
   const newInputRef = useRef<HTMLInputElement>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
 
+  async function loadVersions() {
+    const all = await getVersions(projectId)
+    let displayed = all
+    if (role === 'developer') {
+      const withData = await getVersionIdsWithData(all.map(v => v.id))
+      displayed = all.filter(v => withData.has(v.id))
+    }
+    setVersions(displayed)
+    const stats = await getVersionsFixStats(displayed.map(v => v.id))
+    setFixStats(stats)
+  }
+
   useEffect(() => {
     getProjects().then(list => setProject(list.find(p => p.id === projectId) ?? null))
-    getVersions(projectId).then(async all => {
-      if (role === 'developer') {
-        const withData = await getVersionIdsWithData(all.map(v => v.id))
-        setVersions(all.filter(v => withData.has(v.id)))
-      } else {
-        setVersions(all)
-      }
-    })
+    loadVersions()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, role])
 
   useEffect(() => {
@@ -102,13 +109,13 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   async function handleRename(version: ProjectVersion) {
     const name = editingName.trim() || version.name
     await updateVersion({ ...version, name, updatedAt: Date.now() })
-    setVersions(await getVersions(projectId))
+    await loadVersions()
     setEditingId(null)
   }
 
   async function handleDelete(id: string) {
     await deleteVersion(id)
-    setVersions(await getVersions(projectId))
+    await loadVersions()
     setDeleteConfirmId(null)
   }
 
@@ -302,6 +309,29 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                       <p style={{ fontSize: 12, color: T.mist, marginTop: 2 }}>
                         创建于 {formatDate(version.createdAt)}
                       </p>
+                      {/* Fix status summary */}
+                      {fixStats[version.id] && fixStats[version.id].total > 0 && (() => {
+                        const s = fixStats[version.id]
+                        return (
+                          <div className="flex items-center gap-2" style={{ marginTop: 6 }}>
+                            {s.pending > 0 && (
+                              <span style={{ fontSize: 11, color: '#B85C5C', background: '#FEF0EF', borderRadius: 4, padding: '1px 7px' }}>
+                                待修复 {s.pending}
+                              </span>
+                            )}
+                            {s.fixing > 0 && (
+                              <span style={{ fontSize: 11, color: '#C07828', background: '#FEF6E7', borderRadius: 4, padding: '1px 7px' }}>
+                                修复中 {s.fixing}
+                              </span>
+                            )}
+                            {s.fixed > 0 && (
+                              <span style={{ fontSize: 11, color: '#4A7C59', background: '#EDF6EF', borderRadius: 4, padding: '1px 7px' }}>
+                                已修复 {s.fixed}
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">

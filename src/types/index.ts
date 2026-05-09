@@ -43,7 +43,7 @@ export interface DiffRecord {
   delta?: string
   cssHint?: string
   note?: string
-  fixStatus: 'pending' | 'fixed' | 'ignored'
+  fixStatus: 'pending' | 'fixing' | 'fixed'
   edited?: boolean
 }
 

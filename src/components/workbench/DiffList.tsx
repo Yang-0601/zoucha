@@ -17,6 +17,12 @@ const SEV_LABEL: Record<DiffRecord['severity'], string> = {
   low: '可接受偏差',
 }
 
+const FIX_STATUS_STYLE: Record<DiffRecord['fixStatus'], { label: string; color: string; bg: string }> = {
+  pending: { label: '待修复', color: '#B85C5C', bg: '#FEF0EF' },
+  fixing:  { label: '修复中', color: '#C07828', bg: '#FEF6E7' },
+  fixed:   { label: '已修复', color: '#4A7C59', bg: '#EDF6EF' },
+}
+
 const DIFF_TYPE_LABEL: Record<string, string> = {
   element:     '元素',
   text:        '文字',
@@ -318,7 +324,7 @@ export default function DiffList() {
                     {diff.description || diff.title}
                   </p>
 
-                  {/* 二级：差异类型标签（多选） */}
+                  {/* 二级：差异类型 + 验收状态 */}
                   <div className="flex items-center gap-1 flex-wrap">
                     {types.map(t => (
                       <span key={t} style={{
@@ -331,6 +337,18 @@ export default function DiffList() {
                         {DIFF_TYPE_LABEL[t] ?? t}
                       </span>
                     ))}
+                    {(() => {
+                      const fs = FIX_STATUS_STYLE[diff.fixStatus ?? 'pending']
+                      return (
+                        <span style={{
+                          fontSize: 12, color: fs.color, background: fs.bg,
+                          borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap',
+                          marginLeft: 'auto',
+                        }}>
+                          {fs.label}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </li>
               )

@@ -24,6 +24,12 @@ const SEV_OPTIONS: { value: DiffRecord['severity']; label: string; dot: string }
   { value: 'low',  label: '可接受偏差', dot: '#6E8FAD' },
 ]
 
+const FIX_STATUS_OPTIONS: { value: DiffRecord['fixStatus']; label: string; color: string; bg: string }[] = [
+  { value: 'pending', label: '待修复', color: '#B85C5C', bg: '#FEF0EF' },
+  { value: 'fixing',  label: '修复中', color: '#C07828', bg: '#FEF6E7' },
+  { value: 'fixed',   label: '已修复', color: '#4A7C59', bg: '#EDF6EF' },
+]
+
 const DIFF_TYPE_OPTIONS: { value: DiffType; label: string }[] = [
   { value: 'element',     label: '元素' },
   { value: 'text',        label: '文字' },
@@ -187,6 +193,36 @@ export default function DetailPanel() {
         )}
       </div>
 
+
+      {/* 验收状态 — both roles can edit */}
+      <Section>
+        <SectionLabel>验收状态</SectionLabel>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {FIX_STATUS_OPTIONS.map(o => {
+            const active = (diff.fixStatus ?? 'pending') === o.value
+            return (
+              <button
+                key={o.value}
+                onClick={() => updateDiff(diff.id, { fixStatus: o.value })}
+                className="flex-1 transition-colors duration-150"
+                style={{
+                  fontSize: 12, fontWeight: active ? 600 : 400,
+                  color: active ? o.color : T.mist,
+                  background: active ? o.bg : 'transparent',
+                  border: `1px solid ${active ? o.color + '60' : T.border}`,
+                  borderRadius: 6, padding: '6px 0', cursor: 'pointer',
+                }}
+                onMouseOver={e => { if (!active) { e.currentTarget.style.borderColor = o.color + '60'; e.currentTarget.style.color = o.color } }}
+                onMouseOut={e => { if (!active) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.mist } }}
+              >
+                {o.label}
+              </button>
+            )
+          })}
+        </div>
+      </Section>
+
+      <Rule />
 
       {/* 设计决策 */}
       <Section>

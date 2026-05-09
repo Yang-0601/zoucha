@@ -103,6 +103,39 @@ export async function saveVersionData(
   if (error) throw new Error(error.message ?? JSON.stringify(error))
 }
 
+export interface VersionFixStats {
+  total: number
+  pending: number
+  fixing: number
+  fixed: number
+}
+
+/**
+ * Batch-load fix status counts for a list of versions.
+ */
+export async function getVersionsFixStats(
+  versionIds: string[],
+): Promise<Record<string, VersionFixStats>> {
+  if (versionIds.length === 0) return {}
+  const { data } = await supabase
+    .from('version_data')
+    .select('version_id, diffs')
+    .in('version_id', versionIds)
+  const result: Record<string, VersionFixStats> = {}
+  for (const row of data ?? []) {
+    const diffs = (row.diffs as DiffRecord[]) ?? []
+    const stats: VersionFixStats = { total: diffs.length, pending: 0, fixing: 0, fixed: 0 }
+    for (const d of diffs) {
+      const s = d.fixStatus ?? 'pending'
+      if (s === 'fixing') stats.fixing++
+      else if (s === 'fixed') stats.fixed++
+      else stats.pending++
+    }
+    result[row.version_id] = stats
+  }
+  return result
+}
+
 /**
  * Load version data from Supabase. Returns null when no row exists yet.
  */
