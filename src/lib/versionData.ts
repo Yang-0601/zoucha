@@ -1,13 +1,21 @@
 import { supabase } from './supabase'
-import { Annotation, DiffRecord, ImageFile } from '@/types'
+import { Annotation, CompareMode, DiffRecord, Guideline, ImageFile } from '@/types'
 
 export const VERSION_IMAGES_BUCKET = 'version-images'
+
+const EMPTY_GUIDELINES_MAP = (): Record<CompareMode, Guideline[]> => ({
+  'side-by-side': [],
+  'slider': [],
+  'overlay-heatmap': [],
+  'overlap': [],
+})
 
 export interface VersionDataSnapshot {
   designImage: ImageFile | null
   liveImage: ImageFile | null
   annotations: Annotation[]
   diffs: DiffRecord[]
+  guidelinesMap: Record<CompareMode, Guideline[]>
 }
 
 /**
@@ -59,6 +67,7 @@ export async function saveVersionData(
     liveImage: ImageFile | null
     annotations: Annotation[]
     diffs: DiffRecord[]
+    guidelinesMap: Record<CompareMode, Guideline[]>
   },
 ): Promise<void> {
   const row = {
@@ -71,6 +80,7 @@ export async function saveVersionData(
     live_height: snapshot.liveImage?.height ?? null,
     annotations: snapshot.annotations,
     diffs: snapshot.diffs,
+    guidelines: snapshot.guidelinesMap,
     updated_at: new Date().toISOString(),
   }
   const { error } = await supabase
@@ -110,5 +120,6 @@ export async function loadVersionData(
       : null,
     annotations: (data.annotations as Annotation[]) ?? [],
     diffs: (data.diffs as DiffRecord[]) ?? [],
+    guidelinesMap: (data.guidelines as Record<CompareMode, Guideline[]>) ?? EMPTY_GUIDELINES_MAP(),
   }
 }

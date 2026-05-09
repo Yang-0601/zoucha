@@ -55,6 +55,7 @@ create table if not exists version_data (
   live_height     integer,
   annotations     jsonb not null default '[]',
   diffs           jsonb not null default '[]',
+  guidelines      jsonb not null default '{}',
   updated_at      timestamptz not null default now()
 );
 

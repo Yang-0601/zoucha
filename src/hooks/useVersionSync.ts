@@ -18,10 +18,12 @@ export function useVersionSync(versionId: string | null) {
     liveImage,
     annotations,
     diffs,
+    guidelinesMap,
     setDesignImage,
     setLiveImage,
     setAnnotations,
     setDiffs,
+    setGuidelinesMap,
     setVersionLoading,
     setVersionSynced,
   } = useAppStore()
@@ -55,9 +57,11 @@ export function useVersionSync(versionId: string | null) {
             if (snapshot.liveImage) setLiveImage(snapshot.liveImage)
             setAnnotations(snapshot.annotations)
             setDiffs(snapshot.diffs)
+            setGuidelinesMap(snapshot.guidelinesMap)
             lastSavedKeyRef.current = JSON.stringify({
               a: snapshot.annotations,
               d: snapshot.diffs,
+              g: snapshot.guidelinesMap,
             })
           }
         })
@@ -99,10 +103,12 @@ export function useVersionSync(versionId: string | null) {
           liveImage: live,
           annotations: state.annotations,
           diffs: state.diffs,
+          guidelinesMap: state.guidelinesMap,
         })
         lastSavedKeyRef.current = JSON.stringify({
           a: state.annotations,
           d: state.diffs,
+          g: state.guidelinesMap,
         })
       }
 
@@ -113,17 +119,17 @@ export function useVersionSync(versionId: string | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionId])
 
-  // ── Debounced auto-save when annotations / diffs change ───────────────────
+  // ── Debounced auto-save when annotations / diffs / guidelines change ─────
   useEffect(() => {
     if (!versionId || !designImage || !liveImage) return
 
-    const key = JSON.stringify({ a: annotations, d: diffs })
+    const key = JSON.stringify({ a: annotations, d: diffs, g: guidelinesMap })
     if (key === lastSavedKeyRef.current) return
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await saveVersionData(versionId, { designImage, liveImage, annotations, diffs })
+        await saveVersionData(versionId, { designImage, liveImage, annotations, diffs, guidelinesMap })
         lastSavedKeyRef.current = key
       } catch (err) {
         console.error('[useVersionSync] auto-save error', err)
@@ -133,5 +139,5 @@ export function useVersionSync(versionId: string | null) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  }, [versionId, annotations, diffs, designImage, liveImage])
+  }, [versionId, annotations, diffs, guidelinesMap, designImage, liveImage])
 }
