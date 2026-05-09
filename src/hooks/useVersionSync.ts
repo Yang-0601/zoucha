@@ -71,9 +71,15 @@ export function useVersionSync(versionId: string | null) {
               g: snapshot.guidelinesMap,
             })
           }
+          // Set synced inside .then() so it batches with setDesignImage in the same
+          // React render — prevents a brief window where versionSynced=true but
+          // designImage=null that could trigger a false redirect to the upload page.
+          setVersionLoading(false)
+          setVersionSynced(true)
+          loadingRef.current = false
         })
-        .catch(err => console.error('[useVersionSync] load error', err))
-        .finally(() => {
+        .catch(err => {
+          console.error('[useVersionSync] load error', err)
           setVersionLoading(false)
           setVersionSynced(true)
           loadingRef.current = false
