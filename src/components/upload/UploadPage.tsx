@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { scaleImageToWidth } from '@/lib/imageUtils'
-import { uploadVersionImage } from '@/lib/versionData'
+import { uploadVersionImage, deleteOneVersionImage } from '@/lib/versionData'
 import DropZone from './DropZone'
 import WidthSelector from './WidthSelector'
 
@@ -158,13 +158,23 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
               label="设计稿"
               image={designImage}
               onImage={handleDesignImage}
-              onClear={() => setDesignImage(null)}
+              onClear={() => {
+                setDesignImage(null)
+                if (versionId && designImage?.storedUrl) {
+                  deleteOneVersionImage(versionId, 'design').catch(console.error)
+                }
+              }}
             />
             <DropZone
               label="线上截图"
               image={liveImage}
               onImage={handleLiveImage}
-              onClear={() => setLiveImage(null)}
+              onClear={() => {
+                setLiveImage(null)
+                if (versionId && liveImage?.storedUrl) {
+                  deleteOneVersionImage(versionId, 'live').catch(console.error)
+                }
+              }}
             />
           </section>
 

@@ -33,6 +33,30 @@ export async function getVersionIdsWithData(versionIds: string[]): Promise<Set<s
 }
 
 /**
+ * Delete one image (design or live) from Storage and null out its URL in version_data.
+ */
+export async function deleteOneVersionImage(
+  versionId: string,
+  type: 'design' | 'live',
+): Promise<void> {
+  // List files in the version folder and delete the one matching the type prefix
+  const { data: files } = await supabase.storage
+    .from(VERSION_IMAGES_BUCKET)
+    .list(versionId)
+  const matches = (files ?? []).filter(f => f.name.startsWith(type + '.'))
+  if (matches.length > 0) {
+    const paths = matches.map(f => `${versionId}/${f.name}`)
+    await supabase.storage.from(VERSION_IMAGES_BUCKET).remove(paths)
+  }
+  // Null out the URL column in version_data
+  const col = type === 'design' ? 'design_url' : 'live_url'
+  await supabase
+    .from('version_data')
+    .update({ [col]: null })
+    .eq('version_id', versionId)
+}
+
+/**
  * Delete all images stored in Storage for a given version.
  * Safe to call even if no files exist.
  */
