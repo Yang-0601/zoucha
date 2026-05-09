@@ -53,7 +53,9 @@ export default function DiffList() {
     reorderDiffs, removeDiff, removeAnnotation,
     confidenceThreshold,
     diffFilter, setDiffFilter,
+    role,
   } = useAppStore()
+  const isReviewer = role === 'reviewer'
 
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
@@ -110,7 +112,7 @@ export default function DiffList() {
         className="flex items-center justify-between px-4"
         style={{ height: 44, borderBottom: '1px solid #E5E2DC', flexShrink: 0 }}
       >
-        {isSelecting ? (
+        {isReviewer && isSelecting ? (
           <>
             <button
               onClick={handleSelectAll}
@@ -132,27 +134,29 @@ export default function DiffList() {
             <span style={{ fontSize: 13, fontWeight: 600, color: '#252525', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               差异列表
             </span>
-            <button
-              onClick={() => setAnnotationMode(!annotationMode)}
-              title={annotationMode ? '退出标注模式' : '添加标注'}
-              className="flex items-center gap-1 transition-colors duration-150"
-              style={{
-                fontSize: 13, fontWeight: 500, color: '#F7F4EE',
-                background: annotationMode ? '#F0A020' : '#252525',
-                borderRadius: 5, padding: '4px 9px', border: 'none', cursor: 'pointer',
-              }}
-              onMouseOver={e => { e.currentTarget.style.background = annotationMode ? '#D99318' : '#3D3A36' }}
-              onMouseOut={e => { e.currentTarget.style.background = annotationMode ? '#F0A020' : '#252525' }}
-            >
-              {annotationMode ? <X size={9} /> : <Plus size={9} />}
-              {annotationMode ? '退出' : '新增'}
-            </button>
+            {isReviewer && (
+              <button
+                onClick={() => setAnnotationMode(!annotationMode)}
+                title={annotationMode ? '退出标注模式' : '添加标注'}
+                className="flex items-center gap-1 transition-colors duration-150"
+                style={{
+                  fontSize: 13, fontWeight: 500, color: '#F7F4EE',
+                  background: annotationMode ? '#F0A020' : '#252525',
+                  borderRadius: 5, padding: '4px 9px', border: 'none', cursor: 'pointer',
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = annotationMode ? '#D99318' : '#3D3A36' }}
+                onMouseOut={e => { e.currentTarget.style.background = annotationMode ? '#F0A020' : '#252525' }}
+              >
+                {annotationMode ? <X size={9} /> : <Plus size={9} />}
+                {annotationMode ? '退出' : '新增'}
+              </button>
+            )}
           </>
         )}
       </div>
 
-      {/* Style picker — annotation mode */}
-      {annotationMode && (
+      {/* Style picker — annotation mode, reviewer only */}
+      {isReviewer && annotationMode && (
         <>
           <div className="px-4 py-3" style={{ background: '#F3F0E8' }}>
             <p style={{ fontSize: 12, color: '#8A8680', marginBottom: 8, letterSpacing: '0.04em' }}>
@@ -274,22 +278,24 @@ export default function DiffList() {
                   {/* 顶行：序号 + 设计决策 + 多选框 */}
                   <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
                     <div className="flex items-center gap-2">
-                      <span
-                        onClick={e => toggleSelect(diff.id, e)}
-                        title="选择"
-                        style={{
-                          width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                          border: `1.5px solid ${selectedIds.has(diff.id) ? '#252525' : '#D7D5D1'}`,
-                          background: selectedIds.has(diff.id) ? '#252525' : 'transparent',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        {selectedIds.has(diff.id) && (
-                          <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                            <path d="M1.5 4L3 5.5L6.5 2" stroke="#F7F4EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </span>
+                      {isReviewer && (
+                        <span
+                          onClick={e => toggleSelect(diff.id, e)}
+                          title="选择"
+                          style={{
+                            width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                            border: `1.5px solid ${selectedIds.has(diff.id) ? '#252525' : '#D7D5D1'}`,
+                            background: selectedIds.has(diff.id) ? '#252525' : 'transparent',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >
+                          {selectedIds.has(diff.id) && (
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                              <path d="M1.5 4L3 5.5L6.5 2" stroke="#F7F4EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+                      )}
                       <span style={{ fontSize: 12, color: '#8A8680' }}>#{i + 1}</span>
                     </div>
                     <span className="flex items-center gap-1" style={{ fontSize: 12, color: '#8A8680' }}>

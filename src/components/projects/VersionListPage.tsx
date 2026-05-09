@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown } from 'lucide-react'
 import { Project, ProjectVersion } from '@/types'
 import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion } from '@/lib/db'
+import { getVersionIdsWithData } from '@/lib/versionData'
 import { useAppStore } from '@/store'
 import dynamic from 'next/dynamic'
+import RoleBadge from '@/components/role/RoleBadge'
 
 const ReportModal = dynamic(() => import('@/components/shared/ReportModal'), { ssr: false })
 
@@ -33,8 +35,9 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   const router = useRouter()
   const {
     setShowAIConfigModal, showReportModal, setShowReportModal,
-    switchVersion,
+    switchVersion, role,
   } = useAppStore()
+  const isReviewer = role === 'reviewer'
   const [project, setProject] = useState<Project | null>(null)
   const [versions, setVersions] = useState<ProjectVersion[]>([])
   const [creating, setCreating] = useState(false)
@@ -47,8 +50,15 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     getProjects().then(list => setProject(list.find(p => p.id === projectId) ?? null))
-    getVersions(projectId).then(setVersions)
-  }, [projectId])
+    getVersions(projectId).then(async all => {
+      if (role === 'developer') {
+        const withData = await getVersionIdsWithData(all.map(v => v.id))
+        setVersions(all.filter(v => withData.has(v.id)))
+      } else {
+        setVersions(all)
+      }
+    })
+  }, [projectId, role])
 
   useEffect(() => {
     switchVersion(null)
@@ -118,16 +128,19 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
           <span style={{ fontSize: 13, fontWeight: 600, color: T.charcoal, letterSpacing: '-0.01em' }}>设计走查</span>
           <span style={{ fontSize: 11, color: T.mist, marginLeft: 2 }}>v1.1</span>
         </div>
-        <button
-          onClick={() => setShowAIConfigModal(true)}
-          className="flex items-center gap-1.5 transition-colors duration-150"
-          style={{ fontSize: 12, color: T.mist }}
-          onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-        >
-          <Settings size={13} strokeWidth={1.5} />
-          AI 配置
-        </button>
+        <div className="flex items-center gap-3">
+          <RoleBadge />
+          <button
+            onClick={() => setShowAIConfigModal(true)}
+            className="flex items-center gap-1.5 transition-colors duration-150"
+            style={{ fontSize: 12, color: T.mist }}
+            onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+            onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+          >
+            <Settings size={13} strokeWidth={1.5} />
+            AI 配置
+          </button>
+        </div>
       </header>
 
       {/* Main */}
@@ -159,21 +172,23 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
               管理验收功能，开始走查
             </p>
           </div>
-          <button
-            onClick={() => { setCreating(true); setNewName('') }}
-            className="flex items-center gap-2 transition-colors duration-150"
-            style={{
-              fontSize: 13, fontWeight: 500,
-              color: T.paper, background: T.charcoal,
-              border: 'none', borderRadius: 8,
-              padding: '9px 18px', cursor: 'pointer',
-            }}
-            onMouseOver={e => (e.currentTarget.style.background = T.ink)}
-            onMouseOut={e => (e.currentTarget.style.background = T.charcoal)}
-          >
-            <Plus size={14} strokeWidth={2} />
-            新建验收
-          </button>
+          {isReviewer && (
+            <button
+              onClick={() => { setCreating(true); setNewName('') }}
+              className="flex items-center gap-2 transition-colors duration-150"
+              style={{
+                fontSize: 13, fontWeight: 500,
+                color: T.paper, background: T.charcoal,
+                border: 'none', borderRadius: 8,
+                padding: '9px 18px', cursor: 'pointer',
+              }}
+              onMouseOver={e => (e.currentTarget.style.background = T.ink)}
+              onMouseOut={e => (e.currentTarget.style.background = T.charcoal)}
+            >
+              <Plus size={14} strokeWidth={2} />
+              新建验收
+            </button>
+          )}
         </div>
 
         {/* New version input */}
@@ -290,33 +305,39 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={e => { e.stopPropagation(); setShowReportModal(true) }}
-                        title="导出报告"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <FileDown size={13} strokeWidth={1.5} />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); setEditingId(version.id); setEditingName(version.name) }}
-                        title="重命名"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <Pencil size={13} strokeWidth={1.5} />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); setDeleteConfirmId(version.id) }}
-                        title="删除版本"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.red)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <Trash2 size={13} strokeWidth={1.5} />
-                      </button>
+                      {isReviewer && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setShowReportModal(true) }}
+                          title="导出报告"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                          onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+                          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                        >
+                          <FileDown size={13} strokeWidth={1.5} />
+                        </button>
+                      )}
+                      {isReviewer && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditingId(version.id); setEditingName(version.name) }}
+                          title="重命名"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                          onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+                          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                        >
+                          <Pencil size={13} strokeWidth={1.5} />
+                        </button>
+                      )}
+                      {isReviewer && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setDeleteConfirmId(version.id) }}
+                          title="删除版本"
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                          onMouseOver={e => (e.currentTarget.style.color = T.red)}
+                          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                        >
+                          <Trash2 size={13} strokeWidth={1.5} />
+                        </button>
+                      )}
                       <button
                         onClick={() => router.push(getVersionEntryUrl(version.id))}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}

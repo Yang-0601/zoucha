@@ -6,6 +6,7 @@ import { Plus, Trash2, ChevronRight, FolderOpen, Settings, Pencil, Clock, Check,
 import { Project } from '@/types'
 import { getProjects, createProject, updateProject, deleteProject } from '@/lib/db'
 import { useAppStore } from '@/store'
+import RoleBadge from '@/components/role/RoleBadge'
 
 const T = {
   paper:    '#F7F4EE',
@@ -44,8 +45,9 @@ export default function ProjectListPage() {
     setShowAIConfigModal,
     setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
     setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
-    switchVersion,
+    switchVersion, role,
   } = useAppStore()
+  const isReviewer = role === 'reviewer'
 
   function clearVersionState() {
     switchVersion(null)
@@ -59,11 +61,17 @@ export default function ProjectListPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const newNameRef = useRef<HTMLInputElement>(null)
   const editNameRef = useRef<HTMLInputElement>(null)
 
   async function loadProjects() {
-    setProjects(await getProjects())
+    try {
+      setProjects(await getProjects())
+      setErrorMsg(null)
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : String(e))
+    }
   }
 
   useEffect(() => {
@@ -82,8 +90,8 @@ export default function ProjectListPage() {
     const [item] = arr.splice(fromIdx, 1)
     arr.splice(toIdx, 0, item)
     // reassign sortOrder: first item = highest value (list sorted descending)
-    const base = Date.now()
-    const updated = arr.map((p, i) => ({ ...p, sortOrder: base - i * 1000 }))
+    const base = Math.floor(Date.now() / 1000)
+    const updated = arr.map((p, i) => ({ ...p, sortOrder: base - i }))
     setProjects(updated)
     await Promise.all(updated.map(p => updateProject(p)))
   }
@@ -92,14 +100,17 @@ export default function ProjectListPage() {
     const name = newName.trim() || '未命名项目'
     const version = newVersion.trim() || 'v1.0'
     const now = Date.now()
+    const sortOrder = Math.floor(now / 1000)
     const projectId = genId()
-    await createProject({ id: projectId, name, version, sortOrder: now, createdAt: now, updatedAt: now })
-
-    setCreating(false)
-    setNewName('')
-    setNewVersion('')
-
-    await loadProjects()
+    try {
+      await createProject({ id: projectId, name, version, sortOrder, createdAt: now, updatedAt: now })
+      setCreating(false)
+      setNewName('')
+      setNewVersion('')
+      await loadProjects()
+    } catch (e) {
+      setErrorMsg(e instanceof Error ? e.message : String(e))
+    }
   }
 
   async function handleSaveEdit(project: Project) {
@@ -134,16 +145,19 @@ export default function ProjectListPage() {
           <span style={{ fontSize: 13, fontWeight: 600, color: T.charcoal, letterSpacing: '-0.01em' }}>设计走查</span>
           <span style={{ fontSize: 11, color: T.mist, marginLeft: 2 }}>v1.1</span>
         </div>
-        <button
-          onClick={() => setShowAIConfigModal(true)}
-          className="flex items-center gap-1.5"
-          style={{ fontSize: 12, color: T.mist, background: 'none', border: 'none', cursor: 'pointer' }}
-          onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-        >
-          <Settings size={13} strokeWidth={1.5} />
-          AI 配置
-        </button>
+        <div className="flex items-center gap-3">
+          <RoleBadge />
+          <button
+            onClick={() => setShowAIConfigModal(true)}
+            className="flex items-center gap-1.5"
+            style={{ fontSize: 12, color: T.mist, background: 'none', border: 'none', cursor: 'pointer' }}
+            onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+            onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+          >
+            <Settings size={13} strokeWidth={1.5} />
+            AI 配置
+          </button>
+        </div>
       </header>
 
       {/* Main */}
@@ -157,20 +171,30 @@ export default function ProjectListPage() {
             </h1>
             <p style={{ fontSize: 13, color: T.mist, marginTop: 4 }}>共 {projects.length} 个项目</p>
           </div>
-          <button
-            onClick={() => { setCreating(true); setNewName(''); setNewVersion('') }}
-            className="flex items-center gap-2"
-            style={{ fontSize: 13, fontWeight: 500, color: T.paper, background: T.charcoal, border: 'none', borderRadius: 8, padding: '9px 18px', cursor: 'pointer' }}
-            onMouseOver={e => (e.currentTarget.style.background = T.ink)}
-            onMouseOut={e => (e.currentTarget.style.background = T.charcoal)}
-          >
-            <Plus size={14} strokeWidth={2} />
-            新建项目
-          </button>
+          {isReviewer && (
+            <button
+              onClick={() => { setCreating(true); setNewName(''); setNewVersion('') }}
+              className="flex items-center gap-2"
+              style={{ fontSize: 13, fontWeight: 500, color: T.paper, background: T.charcoal, border: 'none', borderRadius: 8, padding: '9px 18px', cursor: 'pointer' }}
+              onMouseOver={e => (e.currentTarget.style.background = T.ink)}
+              onMouseOut={e => (e.currentTarget.style.background = T.charcoal)}
+            >
+              <Plus size={14} strokeWidth={2} />
+              新建项目
+            </button>
+          )}
         </div>
 
-        {/* New project row */}
-        {creating && (
+        {/* Error banner */}
+        {errorMsg && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 16px', marginBottom: 12, fontSize: 12, color: '#B91C1C', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>⚠️ {errorMsg}</span>
+            <button onClick={() => setErrorMsg(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B91C1C', padding: '0 4px' }}>×</button>
+          </div>
+        )}
+
+        {/* New project row — reviewer only */}
+        {isReviewer && creating && (
           <div
             style={{ background: T.warm, border: `1px solid #D9C8A0`, borderRadius: 10, padding: '14px 20px', marginBottom: 10 }}
           >
@@ -292,13 +316,15 @@ export default function ProjectListPage() {
                 /* Normal row */
                 ) : (
                   <div className="flex items-center">
-                    {/* Drag handle */}
-                    <div
-                      style={{ marginRight: 8, color: T.smoke, cursor: 'grab', flexShrink: 0, lineHeight: 0 }}
-                      title="拖拽排序"
-                    >
-                      <GripVertical size={14} strokeWidth={1.5} />
-                    </div>
+                    {/* Drag handle — reviewer only */}
+                    {isReviewer && (
+                      <div
+                        style={{ marginRight: 8, color: T.smoke, cursor: 'grab', flexShrink: 0, lineHeight: 0 }}
+                        title="拖拽排序"
+                      >
+                        <GripVertical size={14} strokeWidth={1.5} />
+                      </div>
+                    )}
                     {/* Name */}
                     <div
                       className="flex items-center gap-2 flex-1 min-w-0"
@@ -335,24 +361,28 @@ export default function ProjectListPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1" style={{ width: 96, flexShrink: 0, justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); setEditingId(project.id); setEditState({ name: project.name, version: project.version || '' }) }}
-                        title="编辑"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <Pencil size={13} strokeWidth={1.5} />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); setDeleteConfirmId(project.id) }}
-                        title="删除"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
-                        onMouseOver={e => (e.currentTarget.style.color = T.red)}
-                        onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-                      >
-                        <Trash2 size={13} strokeWidth={1.5} />
-                      </button>
+                      {isReviewer && (
+                        <>
+                          <button
+                            onClick={e => { e.stopPropagation(); setEditingId(project.id); setEditState({ name: project.name, version: project.version || '' }) }}
+                            title="编辑"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                            onMouseOver={e => (e.currentTarget.style.color = T.charcoal)}
+                            onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                          >
+                            <Pencil size={13} strokeWidth={1.5} />
+                          </button>
+                          <button
+                            onClick={e => { e.stopPropagation(); setDeleteConfirmId(project.id) }}
+                            title="删除"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}
+                            onMouseOver={e => (e.currentTarget.style.color = T.red)}
+                            onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+                          >
+                            <Trash2 size={13} strokeWidth={1.5} />
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => router.push(`/project/${project.id}`)}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.mist, padding: 6, borderRadius: 6 }}

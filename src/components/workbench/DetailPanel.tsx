@@ -120,7 +120,9 @@ export default function DetailPanel() {
     updateDiff, updateAnnotation, setActiveAnnotation,
     removeAnnotation, removeDiff,
     customDiffTypes, addCustomDiffType, removeCustomDiffType,
+    role,
   } = useAppStore()
+  const isReviewer = role === 'reviewer'
 
   const [customLabel, setCustomLabel] = useState('')
 
@@ -168,52 +170,65 @@ export default function DetailPanel() {
         {diff.edited && (
           <span style={{ fontSize: 12, color: T.mist, marginRight: 10 }}>已编辑</span>
         )}
-        <button
-          onClick={() => {
-            removeDiff(diff.id)
-            removeAnnotation(annotation.id)
-            setActiveAnnotation(null)
-          }}
-          aria-label="删除标注"
-          style={{ color: T.mist, background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
-          onMouseOver={e => (e.currentTarget.style.color = '#B85C5C')}
-          onMouseOut={e => (e.currentTarget.style.color = T.mist)}
-        >
-          <Trash2 size={13} strokeWidth={1.5} />
-        </button>
+        {isReviewer && (
+          <button
+            onClick={() => {
+              removeDiff(diff.id)
+              removeAnnotation(annotation.id)
+              setActiveAnnotation(null)
+            }}
+            aria-label="删除标注"
+            style={{ color: T.mist, background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
+            onMouseOver={e => (e.currentTarget.style.color = '#B85C5C')}
+            onMouseOut={e => (e.currentTarget.style.color = T.mist)}
+          >
+            <Trash2 size={13} strokeWidth={1.5} />
+          </button>
+        )}
       </div>
 
 
       {/* 设计决策 */}
       <Section>
         <SectionLabel>设计决策</SectionLabel>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {SEV_OPTIONS.map(o => {
-            const active = diff.severity === o.value
-            return (
-              <button
-                key={o.value}
-                onClick={() => updateDiff(diff.id, { severity: o.value, edited: true, source: 'manual' as const })}
-                className="flex items-center gap-2 transition-colors duration-150"
-                style={{
-                  fontSize: 13,
-                  color: active ? T.paper : T.ink,
-                  background: active ? T.charcoal : 'transparent',
-                  border: `1px solid ${active ? T.charcoal : T.border}`,
-                  borderRadius: 6,
-                  padding: '7px 10px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.borderColor = T.mist }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.borderColor = T.border }}
-              >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: o.dot, flexShrink: 0 }} />
-                {o.label}
-              </button>
-            )
-          })}
-        </div>
+        {isReviewer ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {SEV_OPTIONS.map(o => {
+              const active = diff.severity === o.value
+              return (
+                <button
+                  key={o.value}
+                  onClick={() => updateDiff(diff.id, { severity: o.value, edited: true, source: 'manual' as const })}
+                  className="flex items-center gap-2 transition-colors duration-150"
+                  style={{
+                    fontSize: 13,
+                    color: active ? T.paper : T.ink,
+                    background: active ? T.charcoal : 'transparent',
+                    border: `1px solid ${active ? T.charcoal : T.border}`,
+                    borderRadius: 6,
+                    padding: '7px 10px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseOver={e => { if (!active) e.currentTarget.style.borderColor = T.mist }}
+                  onMouseOut={e => { if (!active) e.currentTarget.style.borderColor = T.border }}
+                >
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: o.dot, flexShrink: 0 }} />
+                  {o.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2" style={{ padding: '7px 10px', background: T.warm, borderRadius: 6 }}>
+            {SEV_OPTIONS.filter(o => o.value === diff.severity).map(o => (
+              <>
+                <span key="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: o.dot, flexShrink: 0 }} />
+                <span key="label" style={{ fontSize: 13, color: T.ink }}>{o.label}</span>
+              </>
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* 差异类型 */}
@@ -224,23 +239,26 @@ export default function DetailPanel() {
           {DIFF_TYPE_OPTIONS.map(o => {
             const types = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
             const active = types.includes(o.value)
+            if (!isReviewer && !active) return null
             return (
               <button
                 key={o.value}
-                onClick={() => {
+                onClick={isReviewer ? () => {
                   const cur = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
                   const next = cur.includes(o.value) ? cur.filter(t => t !== o.value) : [...cur, o.value]
                   updateDiff(diff.id, { diffType: next.length ? next : [o.value], edited: true, source: 'manual' as const })
-                }}
-                className="transition-colors duration-150"
+                } : undefined}
+                className={isReviewer ? 'transition-colors duration-150' : ''}
                 style={{
                   fontSize: 13, color: active ? T.paper : T.ink,
                   background: active ? T.charcoal : 'transparent',
                   border: `1px solid ${active ? T.charcoal : T.border}`,
-                  borderRadius: 4, padding: '4px 9px', cursor: 'pointer', whiteSpace: 'nowrap',
+                  borderRadius: 4, padding: '4px 9px',
+                  cursor: isReviewer ? 'pointer' : 'default',
+                  whiteSpace: 'nowrap',
                 }}
-                onMouseOver={e => { if (!active) e.currentTarget.style.borderColor = T.mist }}
-                onMouseOut={e => { if (!active) e.currentTarget.style.borderColor = T.border }}
+                onMouseOver={isReviewer ? (e => { if (!active) e.currentTarget.style.borderColor = T.mist }) : undefined}
+                onMouseOut={isReviewer ? (e => { if (!active) e.currentTarget.style.borderColor = T.border }) : undefined}
               >
                 {o.label}
               </button>
@@ -250,86 +268,98 @@ export default function DetailPanel() {
           {customDiffTypes.map(label => {
             const types = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
             const active = types.includes(label)
+            if (!isReviewer && !active) return null
             return (
               <div key={label} className="flex items-center" style={{ position: 'relative' }}>
                 <button
-                  onClick={() => {
+                  onClick={isReviewer ? () => {
                     const cur = Array.isArray(diff.diffType) ? diff.diffType : [diff.diffType]
                     const next = cur.includes(label) ? cur.filter(t => t !== label) : [...cur, label]
                     updateDiff(diff.id, { diffType: next.length ? next : cur, edited: true, source: 'manual' as const })
-                  }}
-                  className="transition-colors duration-150"
+                  } : undefined}
+                  className={isReviewer ? 'transition-colors duration-150' : ''}
                   style={{
                     fontSize: 13, color: active ? T.paper : T.ink,
                     background: active ? T.charcoal : 'transparent',
                     border: `1px solid ${active ? T.charcoal : T.border}`,
-                    borderRadius: 4, padding: '4px 28px 4px 9px', cursor: 'pointer', whiteSpace: 'nowrap',
+                    borderRadius: 4,
+                    padding: isReviewer ? '4px 28px 4px 9px' : '4px 9px',
+                    cursor: isReviewer ? 'pointer' : 'default',
+                    whiteSpace: 'nowrap',
                   }}
-                  onMouseOver={e => { if (!active) e.currentTarget.style.borderColor = T.mist }}
-                  onMouseOut={e => { if (!active) e.currentTarget.style.borderColor = T.border }}
+                  onMouseOver={isReviewer ? (e => { if (!active) e.currentTarget.style.borderColor = T.mist }) : undefined}
+                  onMouseOut={isReviewer ? (e => { if (!active) e.currentTarget.style.borderColor = T.border }) : undefined}
                 >
                   {label}
                 </button>
-                {/* 删除全局自定义标签 */}
-                <button
-                  onClick={e => { e.stopPropagation(); removeCustomDiffType(label) }}
-                  title="删除此标签"
-                  style={{
-                    position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 2,
-                    color: active ? '#ffffff88' : T.mist, lineHeight: 1,
-                    display: 'flex', alignItems: 'center',
-                  }}
-                >
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                    <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
-                </button>
+                {/* 删除全局自定义标签 — reviewer only */}
+                {isReviewer && (
+                  <button
+                    onClick={e => { e.stopPropagation(); removeCustomDiffType(label) }}
+                    title="删除此标签"
+                    style={{
+                      position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                      color: active ? '#ffffff88' : T.mist, lineHeight: 1,
+                      display: 'flex', alignItems: 'center',
+                    }}
+                  >
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                      <path d="M1 1L7 7M7 1L1 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
             )
           })}
         </div>
-        {/* 新增自定义标签 */}
-        <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
-          <input
-            type="text"
-            value={customLabel}
-            onChange={e => setCustomLabel(e.target.value)}
-            placeholder="新增标签…"
-            style={{
-              flex: 1, minWidth: 0, fontSize: 13, color: T.charcoal,
-              background: 'transparent', border: `1px solid ${T.border}`,
-              borderRadius: 4, padding: '4px 9px',
-              outline: 'none', transition: 'border-color 150ms',
-            }}
-            onFocus={e => (e.currentTarget.style.borderColor = T.charcoal)}
-            onBlur={e => (e.currentTarget.style.borderColor = T.border)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAddCustomType() }}
-          />
-          <button
-            onClick={handleAddCustomType}
-            style={{
-              fontSize: 13, color: T.mist, background: 'transparent',
-              border: `1px solid ${T.border}`, borderRadius: 4,
-              padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
-              transition: 'border-color 150ms',
-            }}
-            onMouseOver={e => (e.currentTarget.style.borderColor = T.mist)}
-            onMouseOut={e => (e.currentTarget.style.borderColor = T.border)}
-          >
-            确定
-          </button>
-        </div>
+        {/* 新增自定义标签 — reviewer only */}
+        {isReviewer && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+            <input
+              type="text"
+              value={customLabel}
+              onChange={e => setCustomLabel(e.target.value)}
+              placeholder="新增标签…"
+              style={{
+                flex: 1, minWidth: 0, fontSize: 13, color: T.charcoal,
+                background: 'transparent', border: `1px solid ${T.border}`,
+                borderRadius: 4, padding: '4px 9px',
+                outline: 'none', transition: 'border-color 150ms',
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = T.charcoal)}
+              onBlur={e => (e.currentTarget.style.borderColor = T.border)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAddCustomType() }}
+            />
+            <button
+              onClick={handleAddCustomType}
+              style={{
+                fontSize: 13, color: T.mist, background: 'transparent',
+                border: `1px solid ${T.border}`, borderRadius: 4,
+                padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap',
+                transition: 'border-color 150ms',
+              }}
+              onMouseOver={e => (e.currentTarget.style.borderColor = T.mist)}
+              onMouseOut={e => (e.currentTarget.style.borderColor = T.border)}
+            >
+              确定
+            </button>
+          </div>
+        )}
       </Section>
 
       {/* 差异描述 */}
       <Section>
         <SectionLabel>差异描述</SectionLabel>
-        <WasiInput
-          autoGrow
-          value={diff.description}
-          onChange={v => updateDiff(diff.id, { description: v, edited: true, source: 'manual' as const })}
-        />
+        {isReviewer ? (
+          <WasiInput
+            autoGrow
+            value={diff.description}
+            onChange={v => updateDiff(diff.id, { description: v, edited: true, source: 'manual' as const })}
+          />
+        ) : (
+          <p style={{ fontSize: 13, color: T.charcoal, lineHeight: 1.6 }}>{diff.description}</p>
+        )}
       </Section>
 
       {/* CSS 建议 */}
@@ -338,19 +368,27 @@ export default function DetailPanel() {
           <Rule />
           <Section>
             <SectionLabel>CSS 建议</SectionLabel>
-            <WasiInput
-              rows={4}
-              mono
-              value={diff.cssHint}
-              onChange={v => updateDiff(diff.id, { cssHint: v, edited: true, source: 'manual' as const })}
-            />
+            {isReviewer ? (
+              <WasiInput
+                rows={4}
+                mono
+                value={diff.cssHint}
+                onChange={v => updateDiff(diff.id, { cssHint: v, edited: true, source: 'manual' as const })}
+              />
+            ) : (
+              <pre style={{
+                fontSize: 12, color: T.charcoal, lineHeight: 1.6,
+                fontFamily: 'var(--font-geist-mono), monospace',
+                background: T.warm, borderRadius: 6, padding: '7px 10px',
+                margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+              }}>{diff.cssHint}</pre>
+            )}
           </Section>
         </>
       )}
 
-      {/* 标注样式 */}
-      <Section>
-        <SectionLabel>标注样式</SectionLabel>
+      {/* 标注样式 — reviewer only */}
+      {isReviewer && <Section><SectionLabel>标注样式</SectionLabel>
         <div style={{ display: 'flex', gap: 4 }}>
           {([['A', '序号'], ['B', '边框'], ['C', '填充']] as const).map(([s, label]) => {
             const active = annotation.style === s
@@ -406,10 +444,10 @@ export default function DetailPanel() {
             />
           </div>
         )}
-      </Section>
+      </Section>}
 
-      {/* 气泡位置 — B / C */}
-      {(annotation.style === 'B' || annotation.style === 'C') && (
+      {/* 气泡位置 — B / C, reviewer only */}
+      {isReviewer && (annotation.style === 'B' || annotation.style === 'C') && (
         <>
           <Rule />
           <Section>

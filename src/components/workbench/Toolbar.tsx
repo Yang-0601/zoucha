@@ -57,7 +57,9 @@ export default function Toolbar() {
     showRuler, toggleRuler,
     showGuides, toggleGuides,
     analysisRunning,
+    role,
   } = useAppStore()
+  const isReviewer = role === 'reviewer'
 
   const [pickedColor, setPickedColor] = useState<string | null>(null)
 
@@ -162,29 +164,31 @@ export default function Toolbar() {
 
       <div className="flex-1" />
 
-      {/* AI run */}
-      <button
-        disabled={false}
-        onClick={() => analysisRunning ? abortAnalysis() : runAnalysis()}
-        className={clsx(
-          'flex items-center gap-1.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'
-        )}
-        style={{
-          fontSize: 13,
-          fontWeight: 500,
-          color: analysisRunning ? '#8A8680' : '#F7F4EE',
-          background: analysisRunning ? '#EDE9E1' : '#252525',
-          borderRadius: 7,
-          padding: '6px 14px',
-          border: 'none',
-          cursor: 'pointer',
-        }}
-        onMouseOver={e => { e.currentTarget.style.background = analysisRunning ? '#E0DDD5' : '#3D3A36' }}
-        onMouseOut={e => { e.currentTarget.style.background = analysisRunning ? '#EDE9E1' : '#252525' }}
-      >
-        <Sparkles size={12} strokeWidth={1.5} />
-        {analysisRunning ? '停止分析' : 'AI 分析'}
-      </button>
+      {/* AI run — reviewer only */}
+      {isReviewer && (
+        <button
+          disabled={false}
+          onClick={() => analysisRunning ? abortAnalysis() : runAnalysis()}
+          className={clsx(
+            'flex items-center gap-1.5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2'
+          )}
+          style={{
+            fontSize: 13,
+            fontWeight: 500,
+            color: analysisRunning ? '#8A8680' : '#F7F4EE',
+            background: analysisRunning ? '#EDE9E1' : '#252525',
+            borderRadius: 7,
+            padding: '6px 14px',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+          onMouseOver={e => { e.currentTarget.style.background = analysisRunning ? '#E0DDD5' : '#3D3A36' }}
+          onMouseOut={e => { e.currentTarget.style.background = analysisRunning ? '#EDE9E1' : '#252525' }}
+        >
+          <Sparkles size={12} strokeWidth={1.5} />
+          {analysisRunning ? '停止分析' : 'AI 分析'}
+        </button>
+      )}
     </div>
   )
 }

@@ -13,6 +13,7 @@ import DetailPanel from './DetailPanel'
 import ReportModal from '@/components/shared/ReportModal'
 import ShareModal from '@/components/shared/ShareModal'
 import WorkbenchGuideModal from '@/components/shared/WorkbenchGuideModal'
+import RoleBadge from '@/components/role/RoleBadge'
 
 export default function Workbench() {
   const router = useRouter()
@@ -117,6 +118,10 @@ export default function Workbench() {
         </div>
 
         <div className="flex-1" />
+
+        <RoleBadge />
+
+        <div style={{ width: 1, height: 14, background: '#E5E2DC' }} />
 
         <button
           onClick={() => setShowHelpModal(true)}

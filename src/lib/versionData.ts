@@ -19,6 +19,20 @@ export interface VersionDataSnapshot {
 }
 
 /**
+ * Return the subset of versionIds that have actual image data stored.
+ * Used to hide empty versions from developers.
+ */
+export async function getVersionIdsWithData(versionIds: string[]): Promise<Set<string>> {
+  if (versionIds.length === 0) return new Set()
+  const { data } = await supabase
+    .from('version_data')
+    .select('version_id')
+    .in('version_id', versionIds)
+    .not('design_url', 'is', null)
+  return new Set((data ?? []).map((r: { version_id: string }) => r.version_id))
+}
+
+/**
  * Delete all images stored in Storage for a given version.
  * Safe to call even if no files exist.
  */

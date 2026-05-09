@@ -75,6 +75,10 @@ interface AppState {
   pendingAnnotationStyle: import('@/types').AnnotationStyle
   pendingFillOpacity: number
 
+  // Role
+  role: 'reviewer' | 'developer' | null
+  setRole: (r: 'reviewer' | 'developer' | null) => void
+
   // AI config
   aiConfigs: AIModelConfig[]
   activeAIConfigId: string | null
@@ -181,6 +185,9 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   versionData: {},
   versionLoading: false,
   versionSynced: false,
+
+  role: null,
+  setRole: (r) => set({ role: r }),
 
   aiConfigs: [],
   activeAIConfigId: null,
@@ -412,6 +419,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
 }), {
   name: 'design-review-store',
   partialize: (s) => ({
+    role: s.role,
     aiConfigs: s.aiConfigs,
     activeAIConfigId: s.activeAIConfigId,
     confidenceThreshold: s.confidenceThreshold,
