@@ -130,6 +130,8 @@ interface AppState {
   setShowReportModal: (v: boolean) => void
   showHelpModal: boolean
   setShowHelpModal: (v: boolean) => void
+  showShareModal: boolean
+  setShowShareModal: (v: boolean) => void
   setConfidenceThreshold: (v: number) => void
   setDiffFilter: (f: 'all' | 'ai' | 'manual') => void
   switchVersion: (versionId: string | null) => void
@@ -176,6 +178,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   showAIConfigModal: false,
   showReportModal: false,
   showHelpModal: false,
+  showShareModal: false,
   confidenceThreshold: 70,
   diffFilter: 'all' as 'all' | 'ai' | 'manual',
   customDiffTypes: [],
@@ -376,6 +379,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   setShowAIConfigModal: (v) => set({ showAIConfigModal: v }),
   setShowReportModal: (v) => set({ showReportModal: v }),
   setShowHelpModal: (v) => set({ showHelpModal: v }),
+  setShowShareModal: (v) => set({ showShareModal: v }),
   setConfidenceThreshold: (v) => set({ confidenceThreshold: v }),
   setDiffFilter: (f) => set({ diffFilter: f }),
   addCustomDiffType: (label) => set((s) => ({
