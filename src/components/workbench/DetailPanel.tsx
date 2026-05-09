@@ -393,7 +393,11 @@ export default function DetailPanel() {
             onChange={v => updateDiff(diff.id, { description: v, edited: true, source: 'manual' as const })}
           />
         ) : (
-          <p style={{ fontSize: 13, color: T.charcoal, lineHeight: 1.6 }}>{diff.description}</p>
+          <p style={{
+            fontSize: 13, color: T.charcoal, lineHeight: 1.6,
+            background: T.warm, borderRadius: 6, padding: '7px 10px',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+          }}>{diff.description}</p>
         )}
       </Section>
 

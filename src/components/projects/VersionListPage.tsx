@@ -24,7 +24,7 @@ const T = {
 }
 
 function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(ts).toLocaleString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function genId() {
