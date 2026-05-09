@@ -85,8 +85,8 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     if (project) await updateProject({ ...project, updatedAt: Date.now() })
     setCreating(false)
     setNewName('')
-
-    setVersions(await getVersions(projectId))
+    // New version has no data yet — go directly to the upload page
+    router.push(`/project/${projectId}/version/${version.id}`)
   }
 
   async function handleRename(version: ProjectVersion) {

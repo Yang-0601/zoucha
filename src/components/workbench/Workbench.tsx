@@ -72,15 +72,17 @@ export default function Workbench() {
     return () => window.removeEventListener('keydown', handler)
   }, [toggleRuler])
 
-  if (versionLoading) {
+  // Show loading while fetching from Supabase, or while waiting for redirect
+  // (versionSynced=true but no data → redirect is imminent, avoid white screen)
+  if (versionLoading || !versionSynced || !designImage || !liveImage) {
     return (
       <div className="flex items-center justify-center h-screen" style={{ background: '#F7F4EE' }}>
-        <span style={{ fontSize: 13, color: '#8A8680' }}>加载中…</span>
+        <span style={{ fontSize: 13, color: '#8A8680' }}>
+          {versionLoading || !versionSynced ? '加载中…' : ''}
+        </span>
       </div>
     )
   }
-
-  if (!designImage || !liveImage) return null
 
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#F7F4EE' }}>
