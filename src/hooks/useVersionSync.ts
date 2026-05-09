@@ -45,8 +45,15 @@ export function useVersionSync(versionId: string | null) {
     const currentDesign = useAppStore.getState().designImage
     const currentLive = useAppStore.getState().liveImage
 
-    if (!currentDesign || !currentLive) {
-      // No images in store — try loading from Supabase
+    // Only use the "upload blobs" path when images are fresh blobs not yet in Storage.
+    // If images already have storedUrls (restored from in-memory snapshot), load fresh
+    // data from Supabase so we always get the latest annotations/diffs/guidelines.
+    const hasUnuploadedBlobs =
+      (currentDesign && !currentDesign.storedUrl && currentDesign.url.startsWith('blob:')) ||
+      (currentLive && !currentLive.storedUrl && currentLive.url.startsWith('blob:'))
+
+    if (!currentDesign || !currentLive || !hasUnuploadedBlobs) {
+      // No images in store, or images already stored — load fresh from Supabase
       if (loadingRef.current) return
       loadingRef.current = true
       setVersionLoading(true)

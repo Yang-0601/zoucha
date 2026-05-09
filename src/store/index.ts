@@ -220,6 +220,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       activeAnnotationId: state.activeAnnotationId,
       annotations: state.annotations,
       diffs: state.diffs,
+      guidelinesMap: state.guidelinesMap,
       analysisRunning: state.analysisRunning,
       analysisProgress: state.analysisProgress,
       analysisPhase: state.analysisPhase,
@@ -239,7 +240,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
         versionData: nextVersionData,
         activeVersionId: versionId,
         ...nextSnapshot,
-        guidelinesMap: EMPTY_GUIDELINES_MAP(),
+        // guidelinesMap is now part of outgoingSnapshot, so spread restores it correctly
       }
     }
 
