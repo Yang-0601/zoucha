@@ -239,6 +239,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
         versionData: nextVersionData,
         activeVersionId: versionId,
         ...nextSnapshot,
+        guidelinesMap: EMPTY_GUIDELINES_MAP(),
       }
     }
 
@@ -250,6 +251,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
       activeAnnotationId: null,
       annotations: [],
       diffs: [],
+      guidelinesMap: EMPTY_GUIDELINES_MAP(),
       analysisRunning: false,
       analysisProgress: 0,
       analysisPhase: '',
