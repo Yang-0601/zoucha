@@ -18,10 +18,15 @@ export default function Workbench() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  // e.g. /project/abc/version/xyz/workbench → back to /project/abc
+  // e.g. /project/abc/version/xyz/workbench
   const segments = pathname.split('/')
-  const backUrl = segments[1] === 'project' && segments[2] ? `/project/${segments[2]}` : '/'
+  const projectId = segments[2] || null
   const versionId = segments[4] || null
+  const backUrl = projectId ? `/project/${projectId}` : '/'
+  // Upload page for the current version — redirect here when no data found
+  const uploadUrl = projectId && versionId
+    ? `/project/${projectId}/version/${versionId}`
+    : backUrl
 
   const {
     designImage, liveImage,
@@ -45,14 +50,14 @@ export default function Workbench() {
   }, [versionId, switchVersion])
 
   useEffect(() => {
-    // Only redirect after the sync has completed — prevents premature redirect
-    // before Supabase data is fetched on fresh page load
+    // Wait for Supabase sync to complete before deciding whether to redirect
     if (!versionSynced) return
     const hasExistingContent = !!designImage || !!liveImage || annotations.length > 0 || diffs.length > 0
     if (versionId && !hasExistingContent && !versionSnapshot) {
-      router.replace(backUrl)
+      // No data found — send user to upload page for this version
+      router.replace(uploadUrl)
     }
-  }, [designImage, liveImage, annotations.length, diffs.length, versionSnapshot, versionId, router, backUrl, versionSynced])
+  }, [designImage, liveImage, annotations.length, diffs.length, versionSnapshot, versionId, router, uploadUrl, versionSynced])
 
   useEffect(() => {
     if (searchParams.get('export') === '1' && designImage && liveImage) {
@@ -72,14 +77,11 @@ export default function Workbench() {
     return () => window.removeEventListener('keydown', handler)
   }, [toggleRuler])
 
-  // Show loading while fetching from Supabase, or while waiting for redirect
-  // (versionSynced=true but no data → redirect is imminent, avoid white screen)
+  // Show loading screen while fetching or waiting for redirect
   if (versionLoading || !versionSynced || !designImage || !liveImage) {
     return (
       <div className="flex items-center justify-center h-screen" style={{ background: '#F7F4EE' }}>
-        <span style={{ fontSize: 13, color: '#8A8680' }}>
-          {versionLoading || !versionSynced ? '加载中…' : ''}
-        </span>
+        <span style={{ fontSize: 13, color: '#8A8680' }}>加载中…</span>
       </div>
     )
   }
