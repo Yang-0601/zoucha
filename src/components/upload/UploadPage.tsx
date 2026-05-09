@@ -33,14 +33,14 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
 
   useEffect(() => {
     if (designImage) {
-      scaleImageToWidth(designImage, targetWidth).then(setDesignImage)
+      scaleImageToWidth(designImage, targetWidth).then(setDesignImage).catch(console.error)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetWidth])
 
   useEffect(() => {
     if (liveImage) {
-      scaleImageToWidth(liveImage, targetWidth).then(setLiveImage)
+      scaleImageToWidth(liveImage, targetWidth).then(setLiveImage).catch(console.error)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetWidth])

@@ -11,6 +11,20 @@ export interface VersionDataSnapshot {
 }
 
 /**
+ * Delete all images stored in Storage for a given version.
+ * Safe to call even if no files exist.
+ */
+export async function deleteVersionImages(versionId: string): Promise<void> {
+  const { data: files } = await supabase.storage
+    .from(VERSION_IMAGES_BUCKET)
+    .list(versionId)
+  if (files && files.length > 0) {
+    const paths = files.map(f => `${versionId}/${f.name}`)
+    await supabase.storage.from(VERSION_IMAGES_BUCKET).remove(paths)
+  }
+}
+
+/**
  * Upload a blob URL to Supabase Storage and return the permanent public URL.
  */
 export async function uploadVersionImage(

@@ -10,6 +10,10 @@ export async function scaleImageToWidth(
 ): Promise<ImageFile> {
   return new Promise((resolve, reject) => {
     const img = new Image()
+    // Set crossOrigin for https URLs so canvas.toDataURL() works without tainting
+    if (imgFile.url.startsWith('http://') || imgFile.url.startsWith('https://')) {
+      img.crossOrigin = 'anonymous'
+    }
     img.onload = () => {
       const ratio = targetWidth / img.naturalWidth
       const scaledHeight = Math.round(img.naturalHeight * ratio)
@@ -19,15 +23,19 @@ export async function scaleImageToWidth(
       canvas.height = scaledHeight
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0, targetWidth, scaledHeight)
-      const scaledUrl = canvas.toDataURL('image/png')
-      resolve({
-        ...imgFile,
-        scaledUrl,
-        scaledWidth: targetWidth,
-        scaledHeight,
-      })
+      try {
+        const scaledUrl = canvas.toDataURL('image/png')
+        resolve({
+          ...imgFile,
+          scaledUrl,
+          scaledWidth: targetWidth,
+          scaledHeight,
+        })
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error(String(e)))
+      }
     }
-    img.onerror = reject
+    img.onerror = () => reject(new Error(`Failed to load image: ${imgFile.url}`))
     img.src = imgFile.url
   })
 }
@@ -40,7 +48,7 @@ export async function readImageFile(file: File): Promise<ImageFile> {
     img.onload = () => {
       resolve({ file, url, width: img.naturalWidth, height: img.naturalHeight })
     }
-    img.onerror = reject
+    img.onerror = () => reject(new Error(`Failed to read image file: ${file.name}`))
     img.src = url
   })
 }
