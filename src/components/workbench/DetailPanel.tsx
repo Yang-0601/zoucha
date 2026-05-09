@@ -78,9 +78,20 @@ function WasiInput({
   useEffect(() => {
     if (!autoGrow || !taRef.current) return
     const el = taRef.current
-    el.style.height = '0px'       // force scrollHeight to reflect true content height
+    // Find the closest scrollable ancestor so we can restore its position
+    // after the height change (setting '0px' first causes a transient collapse
+    // that resets the panel's scroll position).
+    let scrollEl: HTMLElement | null = el.parentElement
+    while (scrollEl && scrollEl !== document.body) {
+      const ov = window.getComputedStyle(scrollEl).overflowY
+      if (ov === 'auto' || ov === 'scroll') break
+      scrollEl = scrollEl.parentElement
+    }
+    const savedTop = scrollEl?.scrollTop ?? 0
+    el.style.height = '0px'
     el.style.height = `${el.scrollHeight}px`
-    el.scrollTop = 0              // prevent top-clipping on some browsers
+    el.scrollTop = 0
+    if (scrollEl) scrollEl.scrollTop = savedTop
   }, [value, autoGrow])
 
   const base: React.CSSProperties = {
