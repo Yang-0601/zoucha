@@ -219,16 +219,15 @@ export default function DetailPanel() {
               )
             })}
           </div>
-        ) : (
-          <div className="flex items-center gap-2" style={{ padding: '7px 10px', background: T.warm, borderRadius: 6 }}>
-            {SEV_OPTIONS.filter(o => o.value === diff.severity).map(o => (
-              <>
-                <span key="dot" style={{ width: 6, height: 6, borderRadius: '50%', background: o.dot, flexShrink: 0 }} />
-                <span key="label" style={{ fontSize: 13, color: T.ink }}>{o.label}</span>
-              </>
-            ))}
-          </div>
-        )}
+        ) : (() => {
+          const o = SEV_OPTIONS.find(o => o.value === diff.severity)
+          return o ? (
+            <div className="flex items-center gap-2" style={{ padding: '7px 10px', background: T.warm, borderRadius: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: o.dot, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: T.ink }}>{o.label}</span>
+            </div>
+          ) : null
+        })()}
       </Section>
 
       {/* 差异类型 */}

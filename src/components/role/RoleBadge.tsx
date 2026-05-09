@@ -7,7 +7,8 @@ const ROLE_LABEL = { reviewer: '验收人员', developer: '开发者' }
 const ROLE_COLOR = { reviewer: '#252525', developer: '#5A6A7A' }
 
 export default function RoleBadge() {
-  const { role, setRole } = useAppStore(s => ({ role: s.role, setRole: s.setRole }))
+  const role = useAppStore(s => s.role)
+  const setRole = useAppStore(s => s.setRole)
   const [open, setOpen] = useState(false)
 
   if (!role) return null

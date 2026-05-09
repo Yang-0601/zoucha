@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Settings, FileDown, Share2 } from 'lucide-react'
+import { ArrowLeft, Settings, FileDown } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useVersionSync } from '@/hooks/useVersionSync'
 import Toolbar from './Toolbar'
@@ -11,7 +11,6 @@ import DiffList from './DiffList'
 import CompareCanvas from './CompareCanvas'
 import DetailPanel from './DetailPanel'
 import ReportModal from '@/components/shared/ReportModal'
-import ShareModal from '@/components/shared/ShareModal'
 import WorkbenchGuideModal from '@/components/shared/WorkbenchGuideModal'
 import RoleBadge from '@/components/role/RoleBadge'
 
@@ -34,7 +33,6 @@ export default function Workbench() {
     setShowAIConfigModal, toggleRuler,
     showReportModal, setShowReportModal,
     showHelpModal, setShowHelpModal,
-    showShareModal, setShowShareModal,
     switchVersion, versionData,
     annotations, diffs,
     versionLoading, versionSynced,
@@ -145,17 +143,6 @@ export default function Workbench() {
           导出报告
         </button>
 
-        <button
-          onClick={() => setShowShareModal(true)}
-          className="flex items-center gap-1 transition-colors duration-150 px-2 py-1"
-          style={{ fontSize: 12, color: '#8A8680', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4 }}
-          onMouseOver={e => (e.currentTarget.style.color = '#252525')}
-          onMouseOut={e => (e.currentTarget.style.color = '#8A8680')}
-        >
-          <Share2 size={13} strokeWidth={1.5} />
-          分享
-        </button>
-
         <div style={{ width: 1, height: 14, background: '#E5E2DC' }} />
 
         <button
@@ -181,7 +168,6 @@ export default function Workbench() {
       </div>
 
       {showReportModal && <ReportModal onClose={() => setShowReportModal(false)} />}
-      {showShareModal && <ShareModal onClose={() => setShowShareModal(false)} />}
       {showHelpModal && <WorkbenchGuideModal onClose={() => setShowHelpModal(false)} />}
     </div>
   )
