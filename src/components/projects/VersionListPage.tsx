@@ -33,10 +33,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   const router = useRouter()
   const {
     setShowAIConfigModal, showReportModal, setShowReportModal,
-    setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
-    setAnalysisRunning, setAnalysisProgress, setAnalysisPhase,
-    switchVersion, activeVersionId, versionData,
-    designImage, liveImage, annotations, diffs,
+    switchVersion,
   } = useAppStore()
   const [project, setProject] = useState<Project | null>(null)
   const [versions, setVersions] = useState<ProjectVersion[]>([])
@@ -69,18 +66,10 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     switchVersion(null)
   }
 
-  function hasVersionContent(versionId: string) {
-    if (activeVersionId === versionId) {
-      return !!designImage || !!liveImage || annotations.length > 0 || diffs.length > 0
-    }
-    const snapshot = versionData[versionId]
-    return !!snapshot && (!!snapshot.designImage || !!snapshot.liveImage || snapshot.annotations.length > 0 || snapshot.diffs.length > 0)
-  }
-
   function getVersionEntryUrl(versionId: string) {
-    const workbenchBase = `/project/${projectId}/version/${versionId}/workbench`
-    const uploadBase = `/project/${projectId}/version/${versionId}`
-    return hasVersionContent(versionId) ? workbenchBase : uploadBase
+    // Always go to workbench — it will load data from Supabase and redirect to
+    // the upload page only if the version truly has no data yet.
+    return `/project/${projectId}/version/${versionId}/workbench`
   }
 
   async function handleCreate() {

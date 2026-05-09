@@ -10,6 +10,7 @@ import { loadVersionData, saveVersionData, uploadVersionImage } from '@/lib/vers
  * - On mount (or when versionId changes): if no images are loaded, pull from Supabase.
  * - If images exist (just uploaded), upload blobs to Storage then immediately save.
  * - Auto-saves annotations + diffs (debounced 1.5 s) whenever they change.
+ * - Sets versionSynced=true once the initial load attempt completes (even if empty).
  */
 export function useVersionSync(versionId: string | null) {
   const {
@@ -22,17 +23,22 @@ export function useVersionSync(versionId: string | null) {
     setAnnotations,
     setDiffs,
     setVersionLoading,
+    setVersionSynced,
   } = useAppStore()
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Track what we last saved so we don't spam identical saves
   const lastSavedKeyRef = useRef<string>('')
-  // Guard against running two loads simultaneously
   const loadingRef = useRef(false)
 
   // ── Load or persist images on mount / version change ──────────────────────
   useEffect(() => {
-    if (!versionId) return
+    if (!versionId) {
+      setVersionSynced(true)   // no version = nothing to sync
+      return
+    }
+
+    // Reset sync flag whenever we switch to a new version
+    setVersionSynced(false)
 
     const currentDesign = useAppStore.getState().designImage
     const currentLive = useAppStore.getState().liveImage
@@ -49,7 +55,6 @@ export function useVersionSync(versionId: string | null) {
             if (snapshot.liveImage) setLiveImage(snapshot.liveImage)
             setAnnotations(snapshot.annotations)
             setDiffs(snapshot.diffs)
-            // Mark as saved so auto-save doesn't fire immediately
             lastSavedKeyRef.current = JSON.stringify({
               a: snapshot.annotations,
               d: snapshot.diffs,
@@ -59,10 +64,11 @@ export function useVersionSync(versionId: string | null) {
         .catch(err => console.error('[useVersionSync] load error', err))
         .finally(() => {
           setVersionLoading(false)
+          setVersionSynced(true)
           loadingRef.current = false
         })
     } else {
-      // Images exist — came from upload page. Upload blobs if they aren't stored yet.
+      // Images exist — came from upload page. Upload blobs if not yet stored.
       const ensureStored = async () => {
         let design = currentDesign
         let live = currentLive
@@ -87,7 +93,6 @@ export function useVersionSync(versionId: string | null) {
           }
         }
 
-        // Save immediately with current annotations/diffs
         const state = useAppStore.getState()
         await saveVersionData(versionId, {
           designImage: design,
@@ -101,7 +106,9 @@ export function useVersionSync(versionId: string | null) {
         })
       }
 
-      ensureStored().catch(err => console.error('[useVersionSync] initial save error', err))
+      ensureStored()
+        .catch(err => console.error('[useVersionSync] initial save error', err))
+        .finally(() => setVersionSynced(true))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [versionId])

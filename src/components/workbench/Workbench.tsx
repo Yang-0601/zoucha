@@ -31,7 +31,7 @@ export default function Workbench() {
     showShareModal, setShowShareModal,
     switchVersion, versionData,
     annotations, diffs,
-    versionLoading,
+    versionLoading, versionSynced,
   } = useAppStore()
 
   const versionSnapshot = versionId ? versionData[versionId] : undefined
@@ -45,11 +45,14 @@ export default function Workbench() {
   }, [versionId, switchVersion])
 
   useEffect(() => {
+    // Only redirect after the sync has completed — prevents premature redirect
+    // before Supabase data is fetched on fresh page load
+    if (!versionSynced) return
     const hasExistingContent = !!designImage || !!liveImage || annotations.length > 0 || diffs.length > 0
     if (versionId && !hasExistingContent && !versionSnapshot) {
       router.replace(backUrl)
     }
-  }, [designImage, liveImage, annotations.length, diffs.length, versionSnapshot, versionId, router, backUrl])
+  }, [designImage, liveImage, annotations.length, diffs.length, versionSnapshot, versionId, router, backUrl, versionSynced])
 
   useEffect(() => {
     if (searchParams.get('export') === '1' && designImage && liveImage) {
