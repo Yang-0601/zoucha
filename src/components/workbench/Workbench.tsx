@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useLayoutEffect } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Settings, FileDown } from 'lucide-react'
+import { ArrowLeft, Settings, FileDown, Link2, Check } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { useVersionSync } from '@/hooks/useVersionSync'
 import Toolbar from './Toolbar'
@@ -37,6 +37,14 @@ export default function Workbench() {
     annotations, diffs,
     versionLoading, versionSynced,
   } = useAppStore()
+
+  const [linkCopied, setLinkCopied] = useState(false)
+  function handleCopyLink() {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }
 
   const versionSnapshot = versionId ? versionData[versionId] : undefined
 
@@ -141,6 +149,17 @@ export default function Workbench() {
         >
           <FileDown size={13} strokeWidth={1.5} />
           导出报告
+        </button>
+
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-1 transition-colors duration-150 px-2 py-1"
+          style={{ fontSize: 12, color: linkCopied ? '#4A7C59' : '#8A8680', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 4 }}
+          onMouseOver={e => { if (!linkCopied) e.currentTarget.style.color = '#252525' }}
+          onMouseOut={e => { if (!linkCopied) e.currentTarget.style.color = '#8A8680' }}
+        >
+          {linkCopied ? <Check size={13} strokeWidth={2} /> : <Link2 size={13} strokeWidth={1.5} />}
+          {linkCopied ? '已复制' : '复制链接'}
         </button>
 
         <div style={{ width: 1, height: 14, background: '#E5E2DC' }} />

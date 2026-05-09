@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown } from 'lucide-react'
+import { Plus, Trash2, ChevronRight, ChevronLeft, GitBranch, Settings, Pencil, FileDown, Link2, Check } from 'lucide-react'
 import { Project, ProjectVersion } from '@/types'
 import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion } from '@/lib/db'
 import { getVersionIdsWithData, getVersionsFixStats, VersionFixStats } from '@/lib/versionData'
@@ -46,6 +46,7 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
   const [editingName, setEditingName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [fixStats, setFixStats] = useState<Record<string, VersionFixStats>>({})
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const newInputRef = useRef<HTMLInputElement>(null)
   const editInputRef = useRef<HTMLInputElement>(null)
 
@@ -87,6 +88,14 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
     // Always go to workbench — it will load data from Supabase and redirect to
     // the upload page only if the version truly has no data yet.
     return `/project/${projectId}/version/${versionId}/workbench`
+  }
+
+  function handleCopyLink(versionId: string) {
+    const url = `${window.location.origin}/project/${projectId}/version/${versionId}/workbench`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(versionId)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
   }
 
   async function handleCreate() {
@@ -335,6 +344,15 @@ export default function VersionListPage({ projectId }: { projectId: string }) {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={e => { e.stopPropagation(); handleCopyLink(version.id) }}
+                        title="复制链接"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === version.id ? '#4A7C59' : T.mist, padding: 6, borderRadius: 6 }}
+                        onMouseOver={e => { if (copiedId !== version.id) e.currentTarget.style.color = T.charcoal }}
+                        onMouseOut={e => { if (copiedId !== version.id) e.currentTarget.style.color = T.mist }}
+                      >
+                        {copiedId === version.id ? <Check size={13} strokeWidth={2} /> : <Link2 size={13} strokeWidth={1.5} />}
+                      </button>
                       {isReviewer && (
                         <button
                           onClick={e => { e.stopPropagation(); setShowReportModal(true) }}
