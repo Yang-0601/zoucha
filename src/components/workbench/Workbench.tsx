@@ -5,6 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Settings, FileDown, Share2 } from 'lucide-react'
 import { useAppStore } from '@/store'
+import { useVersionSync } from '@/hooks/useVersionSync'
 import Toolbar from './Toolbar'
 import DiffList from './DiffList'
 import CompareCanvas from './CompareCanvas'
@@ -30,9 +31,12 @@ export default function Workbench() {
     showShareModal, setShowShareModal,
     switchVersion, versionData,
     annotations, diffs,
+    versionLoading,
   } = useAppStore()
 
   const versionSnapshot = versionId ? versionData[versionId] : undefined
+
+  useVersionSync(versionId)
 
   useLayoutEffect(() => {
     if (versionId) {
@@ -64,6 +68,14 @@ export default function Workbench() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [toggleRuler])
+
+  if (versionLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen" style={{ background: '#F7F4EE' }}>
+        <span style={{ fontSize: 13, color: '#8A8680' }}>加载中…</span>
+      </div>
+    )
+  }
 
   if (!designImage || !liveImage) return null
 

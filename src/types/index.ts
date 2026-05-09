@@ -56,8 +56,9 @@ export interface ViewState {
 }
 
 export interface ImageFile {
-  file: File
-  url: string
+  file?: File           // 从 Storage 加载时为 undefined
+  url: string           // blob URL（本地）或 Storage URL（远端加载）
+  storedUrl?: string    // Supabase Storage 永久 URL（上传后设置）
   width: number
   height: number
   scaledUrl?: string

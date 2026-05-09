@@ -67,6 +67,7 @@ interface AppState {
   analysisPhase: string
   activeVersionId: string | null
   versionData: Record<string, VersionSnapshot>
+  versionLoading: boolean
 
   // Annotation mode
   annotationMode: boolean
@@ -113,6 +114,9 @@ interface AppState {
   addAnnotation: (a: Annotation) => void
   updateAnnotation: (id: string, patch: Partial<Annotation>) => void
   removeAnnotation: (id: string) => void
+  setAnnotations: (anns: Annotation[]) => void
+  setDiffs: (diffs: DiffRecord[]) => void
+  setVersionLoading: (v: boolean) => void
   clearAnnotationsAndDiffs: () => void
   addDiff: (d: DiffRecord) => void
   updateDiff: (id: string, patch: Partial<DiffRecord>) => void
@@ -172,6 +176,7 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   analysisPhase: '',
   activeVersionId: null,
   versionData: {},
+  versionLoading: false,
 
   aiConfigs: [],
   activeAIConfigId: null,
@@ -187,6 +192,9 @@ export const useAppStore = create<AppState>()(persist((set, get) => ({
   pendingAnnotationStyle: 'A' as import('@/types').AnnotationStyle,
   pendingFillOpacity: 20,
 
+  setAnnotations: (anns) => set({ annotations: anns }),
+  setDiffs: (diffs) => set({ diffs }),
+  setVersionLoading: (v) => set({ versionLoading: v }),
   setAnnotationMode: (v) => set({ annotationMode: v }),
   setPendingAnnotationStyle: (s) => set({ pendingAnnotationStyle: s }),
   setPendingFillOpacity: (v) => set({ pendingFillOpacity: v }),

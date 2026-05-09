@@ -1,35 +1,81 @@
 -- 在 Supabase Dashboard → SQL Editor 中执行此文件
+-- =============================================================
+-- Part 1：分享快照（share_snapshots）
+-- =============================================================
 
--- 1. 创建分享快照表
 create table if not exists share_snapshots (
-  id           text primary key,                   -- nanoid 短码，如 "V1StGXR8"
-  design_url   text not null,                       -- Supabase Storage 公开 URL
+  id           text primary key,
+  design_url   text not null,
   live_url     text not null,
-  annotations  jsonb not null default '[]',         -- Annotation[] 序列化
-  diffs        jsonb not null default '[]',         -- DiffRecord[] 序列化
+  annotations  jsonb not null default '[]',
+  diffs        jsonb not null default '[]',
   created_at   timestamptz not null default now(),
-  expires_at   timestamptz                          -- null = 永不过期
+  expires_at   timestamptz
 );
 
--- 2. 自动清理过期快照（可选，需要 pg_cron 扩展）
--- select cron.schedule('clean-expired-shares', '0 3 * * *',
---   $$ delete from share_snapshots where expires_at < now() $$);
-
--- 3. Storage：在 Supabase Dashboard → Storage 中创建名为 "share-images" 的 bucket
---    并设置为 Public（允许匿名读取）
---
---    或用以下 SQL（需要 storage schema 权限）：
--- insert into storage.buckets (id, name, public)
--- values ('share-images', 'share-images', true)
--- on conflict do nothing;
-
--- 4. RLS 策略 — 允许所有人读，只允许 service_role 写
 alter table share_snapshots enable row level security;
 
 create policy "anyone can read snapshots"
-  on share_snapshots for select
-  using (true);
+  on share_snapshots for select using (true);
 
 create policy "service role can insert snapshots"
-  on share_snapshots for insert
-  with check (true);   -- API Route 用 service_role key，绕过 RLS
+  on share_snapshots for insert with check (true);
+
+-- =============================================================
+-- Part 2：项目与版本（projects / versions / version_data）
+-- =============================================================
+
+-- 项目表（替换 IndexedDB projects）
+create table if not exists projects (
+  id          text primary key,
+  name        text not null,
+  version     text not null default '',
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- 版本表（替换 IndexedDB versions）
+create table if not exists versions (
+  id          text primary key,
+  project_id  text not null references projects(id) on delete cascade,
+  name        text not null,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- 每个版本的工作台数据（标注 + 差异 + 图片 URL）
+create table if not exists version_data (
+  version_id      text primary key references versions(id) on delete cascade,
+  design_url      text,
+  design_width    integer,
+  design_height   integer,
+  live_url        text,
+  live_width      integer,
+  live_height     integer,
+  annotations     jsonb not null default '[]',
+  diffs           jsonb not null default '[]',
+  updated_at      timestamptz not null default now()
+);
+
+-- RLS：暂时全开放，后续接入 Auth 时再收紧
+alter table projects    enable row level security;
+alter table versions    enable row level security;
+alter table version_data enable row level security;
+
+create policy "public projects"     on projects     using (true) with check (true);
+create policy "public versions"     on versions     using (true) with check (true);
+create policy "public version_data" on version_data using (true) with check (true);
+
+-- =============================================================
+-- Part 3：Storage bucket（在 Dashboard → Storage 手动创建）
+-- =============================================================
+-- 创建名为 "version-images" 的 Public bucket，步骤：
+--   Dashboard → Storage → New bucket
+--   Name: version-images
+--   Public bucket: ON
+--
+-- 如果有 storage schema 权限也可以直接执行：
+-- insert into storage.buckets (id, name, public)
+-- values ('version-images', 'version-images', true)
+-- on conflict do nothing;

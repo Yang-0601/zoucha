@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
 import { scaleImageToWidth } from '@/lib/imageUtils'
+import { uploadVersionImage } from '@/lib/versionData'
 import DropZone from './DropZone'
 import WidthSelector from './WidthSelector'
 
@@ -47,13 +48,31 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
   const handleDesignImage = async (img: Parameters<typeof setDesignImage>[0]) => {
     if (!img) return setDesignImage(null)
     const scaled = await scaleImageToWidth(img, targetWidth)
-    setDesignImage(scaled)
+    if (versionId && scaled.url.startsWith('blob:')) {
+      try {
+        const storedUrl = await uploadVersionImage(versionId, 'design', scaled.url)
+        setDesignImage({ ...scaled, storedUrl, url: storedUrl })
+      } catch {
+        setDesignImage(scaled)
+      }
+    } else {
+      setDesignImage(scaled)
+    }
   }
 
   const handleLiveImage = async (img: Parameters<typeof setLiveImage>[0]) => {
     if (!img) return setLiveImage(null)
     const scaled = await scaleImageToWidth(img, targetWidth)
-    setLiveImage(scaled)
+    if (versionId && scaled.url.startsWith('blob:')) {
+      try {
+        const storedUrl = await uploadVersionImage(versionId, 'live', scaled.url)
+        setLiveImage({ ...scaled, storedUrl, url: storedUrl })
+      } catch {
+        setLiveImage(scaled)
+      }
+    } else {
+      setLiveImage(scaled)
+    }
   }
 
   const canProceed = !!designImage && !!liveImage
