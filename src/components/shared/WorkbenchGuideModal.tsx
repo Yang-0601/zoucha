@@ -158,7 +158,7 @@ function TabQuickStart() {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
           <span style={{ fontSize: 16, lineHeight: 1 }}>💡</span>
           <p style={{ fontSize: 12, color: T.ink, lineHeight: 1.7 }}>
-            在任意位置按 <Key>?</Key> 可随时打开本手册。走查中遇到问题，查阅对应标签页即可快速定位。
+            走查中遇到问题，查阅对应标签页即可快速定位。
           </p>
         </div>
       </InfoCard>
@@ -257,8 +257,9 @@ function TabAnnotation() {
     { name: '拖拽排序', desc: '拖动每行左侧手柄调整差异顺序，影响最终报告排序。' },
     { name: '来源筛选', desc: '顶部「全部 / AI / 手动」三个 Tab 快速过滤差异来源。' },
     { name: '批量删除', desc: '勾选多条后点击删除按钮一键清除，支持全选。' },
-    { name: '修复状态', desc: '对每条差异标记"已修复"或"忽略"，便于跟踪进度。' },
+    { name: '修复状态', desc: '对每条差异标记「待修复 / 修复中 / 已修复」，验收人员和开发者均可操作，版本列表实时汇总状态数量。' },
     { name: '置信度筛选', desc: '拖动置信度滑块，只显示高于阈值的 AI 差异。' },
+    { name: '复制链接', desc: '顶栏「复制链接」一键复制当前版本地址，粘贴给他人可直接进入该版本工作台，无需重新上传。' },
   ]
 
   return (
@@ -323,6 +324,30 @@ function TabAnnotation() {
         </InfoCard>
       </div>
 
+      {/* Role system */}
+      <div>
+        <SectionLabel>角色权限</SectionLabel>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[
+            { name: '验收人员', color: T.amber, desc: '完整编辑权限：新建 / 删除差异、手动标注、AI 分析、修改所有字段、导出报告。' },
+            { name: '开发者', color: T.blue, desc: '只读模式：查看所有差异与标注，可操作「验收状态」标记修复进度，无法编辑其他内容。' },
+          ].map(r => (
+            <div key={r.name} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12,
+              background: T.surface, border: `1px solid ${T.border}`,
+              borderLeft: `3px solid ${r.color}`,
+              borderRadius: 8, padding: '10px 14px',
+            }}>
+              <Tag color={r.color}>{r.name}</Tag>
+              <p style={{ fontSize: 12, color: T.mist, lineHeight: 1.65, paddingTop: 1 }}>{r.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: T.mist, lineHeight: 1.7, marginTop: 8 }}>
+          角色在首次进入时选择，可通过顶栏右侧角色徽章随时切换。
+        </p>
+      </div>
+
       {/* List features */}
       <div>
         <SectionLabel>差异列表操作</SectionLabel>
@@ -364,6 +389,7 @@ function TabShortcuts() {
         { keys: [['滚轮']], desc: '缩放（以鼠标为中心）' },
         { keys: [['Ctrl'], ['R']], desc: '切换标尺显示' },
         { keys: [['Alt']], desc: '查看辅助线之间间距' },
+        { keys: [['双击辅助线']], desc: '删除该条辅助线' },
       ],
     },
     {
@@ -386,7 +412,6 @@ function TabShortcuts() {
       title: '全局',
       color: T.red,
       items: [
-        { keys: [['?']], desc: '打开使用手册' },
         { keys: [['Ctrl'], ['R']], desc: '切换标尺' },
       ],
     },
@@ -697,18 +722,7 @@ export default function WorkbenchGuideModal({ onClose }: { onClose: () => void }
               )
             })}
 
-            {/* Bottom hint */}
             <div style={{ flex: 1 }} />
-            <div style={{
-              padding: '8px 10px',
-              borderRadius: 6,
-              background: `${T.charcoal}08`,
-              border: `1px solid ${T.border}`,
-            }}>
-              <p style={{ fontSize: 10, color: T.smoke, lineHeight: 1.6, textAlign: 'center' }}>
-                按 <Key>?</Key> 随时打开
-              </p>
-            </div>
           </nav>
 
           {/* Content area */}

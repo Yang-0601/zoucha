@@ -35,6 +35,7 @@ export default function Workbench() {
     showHelpModal, setShowHelpModal,
     switchVersion, versionData,
     annotations, diffs,
+    activeAnnotationId, removeDiff, removeAnnotation,
     versionLoading, versionSynced,
   } = useAppStore()
 
@@ -79,10 +80,21 @@ export default function Workbench() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
         e.preventDefault(); toggleRuler()
       }
+      if (e.key === '?') {
+        e.preventDefault(); setShowHelpModal(true)
+      }
+      if (e.key === 'Delete') {
+        const id = useAppStore.getState().activeAnnotationId
+        if (id) {
+          const ann = useAppStore.getState().annotations.find(a => a.id === id)
+          if (ann?.diffId) removeDiff(ann.diffId)
+          removeAnnotation(id)
+        }
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [toggleRuler])
+  }, [toggleRuler, setShowHelpModal, removeDiff, removeAnnotation])
 
   // Show loading screen while fetching or waiting for redirect
   if (versionLoading || !versionSynced || !designImage || !liveImage) {

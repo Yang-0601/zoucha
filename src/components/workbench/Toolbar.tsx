@@ -33,13 +33,14 @@ function TBtn({
       title={title}
       disabled={disabled}
       onClick={onClick}
-      className="flex items-center gap-1 px-2 py-1 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+      className="flex items-center gap-1 px-2 py-1 transition-colors duration-150 focus:outline-none"
       style={{
         fontSize: 13,
         color: disabled ? '#C4B99A' : active ? '#252525' : '#8A8680',
         cursor: disabled ? 'not-allowed' : 'pointer',
         background: 'transparent',
         border: 'none',
+        outline: 'none',
         borderRadius: 4,
       }}
       onMouseOver={e => { if (!disabled) e.currentTarget.style.color = '#252525' }}

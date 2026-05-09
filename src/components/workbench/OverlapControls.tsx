@@ -3,6 +3,37 @@
 import React from 'react'
 import { useAppStore } from '@/store'
 
+function Slider({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 11, color: '#8A8680', whiteSpace: 'nowrap' }}>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={100}
+        value={value}
+        onChange={(e) => onChange(+e.target.value)}
+        style={{
+          width: 88,
+          accentColor: '#252525',
+          cursor: 'pointer',
+        }}
+      />
+      <span style={{ fontSize: 11, color: '#3D3A36', width: 30, textAlign: 'right' }}>
+        {value}%
+      </span>
+    </div>
+  )
+}
+
 export default function OverlapControls() {
   const {
     designOpacity,
@@ -16,55 +47,50 @@ export default function OverlapControls() {
   } = useAppStore()
 
   return (
-    <div className="bg-white/90 backdrop-blur rounded-xl shadow-lg px-4 py-3 flex items-center gap-5 text-xs">
-      {/* Design opacity */}
-      <div className="flex items-center gap-2">
-        <span className="text-gray-600 w-14 text-right">设计稿</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={designOpacity}
-          onChange={(e) => setDesignOpacity(+e.target.value)}
-          className="w-24 accent-blue-600"
-        />
-        <span className="text-gray-500 w-8">{designOpacity}%</span>
-      </div>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      padding: '8px 14px',
+      background: '#F7F4EE',
+      border: '1px solid #E5E2DC',
+      borderRadius: 10,
+      boxShadow: '0 2px 12px rgba(37,37,37,0.08)',
+    }}>
+      <Slider label="设计稿" value={designOpacity} onChange={setDesignOpacity} />
 
-      <div className="h-4 w-px bg-gray-200" />
+      <div style={{ width: 1, height: 14, background: '#E5E2DC', flexShrink: 0 }} />
 
-      {/* Live opacity */}
-      <div className="flex items-center gap-2">
-        <span className="text-gray-600 w-14 text-right">线上稿</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={liveOpacity}
-          onChange={(e) => setLiveOpacity(+e.target.value)}
-          className="w-24 accent-blue-600"
-        />
-        <span className="text-gray-500 w-8">{liveOpacity}%</span>
-      </div>
+      <Slider label="线上稿" value={liveOpacity} onChange={setLiveOpacity} />
 
-      <div className="h-4 w-px bg-gray-200" />
+      <div style={{ width: 1, height: 14, background: '#E5E2DC', flexShrink: 0 }} />
 
-      {/* Blend mode */}
       <button
         onClick={() => setDifferenceBlend(!differenceBlend)}
-        className={`px-2 py-1 rounded-md border text-xs transition-all ${
-          differenceBlend
-            ? 'bg-purple-600 text-white border-purple-600'
-            : 'border-gray-200 text-gray-600 hover:border-purple-400'
-        }`}
+        style={{
+          fontSize: 11,
+          fontWeight: differenceBlend ? 600 : 400,
+          color: differenceBlend ? '#252525' : '#8A8680',
+          background: differenceBlend ? '#EDE9E1' : 'transparent',
+          border: `1px solid ${differenceBlend ? '#D7D5D1' : 'transparent'}`,
+          borderRadius: 5,
+          padding: '3px 9px',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          outline: 'none',
+          transition: 'all 0.15s',
+        }}
+        onMouseOver={e => { if (!differenceBlend) e.currentTarget.style.color = '#3D3A36' }}
+        onMouseOut={e => { if (!differenceBlend) e.currentTarget.style.color = '#8A8680' }}
       >
         差值混合
       </button>
 
-      {/* Offset display */}
-      <div className="text-gray-400 text-[10px]">
+      <div style={{ width: 1, height: 14, background: '#E5E2DC', flexShrink: 0 }} />
+
+      <span style={{ fontSize: 10, color: '#C4B99A', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
         X {liveOffsetX} · Y {liveOffsetY}
-      </div>
+      </span>
     </div>
   )
 }
