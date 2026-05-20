@@ -6,6 +6,7 @@ import { Plus, Trash2, ChevronRight, FolderOpen, Settings, Pencil, Clock, Check,
 import { Project } from '@/types'
 import { getProjects, createProject, updateProject, deleteProject } from '@/lib/db'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/hooks/useAuth'
 import RoleBadge from '@/components/role/RoleBadge'
 
 const T = {
@@ -41,6 +42,7 @@ interface EditState {
 
 export default function ProjectListPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const {
     setShowAIConfigModal,
     setDesignImage, setLiveImage, clearAnnotationsAndDiffs,
@@ -48,6 +50,11 @@ export default function ProjectListPage() {
     switchVersion, role,
   } = useAppStore()
   const isReviewer = role === 'reviewer'
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) router.replace('/login')
+  }, [user, authLoading, router])
 
   function clearVersionState() {
     switchVersion(null)

@@ -4,6 +4,7 @@ import React, { useEffect, useLayoutEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, PenLine, Settings, ChevronLeft } from 'lucide-react'
 import { useAppStore } from '@/store'
+import { useAuth } from '@/hooks/useAuth'
 import { scaleImageToWidth } from '@/lib/imageUtils'
 import { uploadVersionImage, deleteOneVersionImage } from '@/lib/versionData'
 import DropZone from './DropZone'
@@ -11,6 +12,7 @@ import WidthSelector from './WidthSelector'
 
 export default function UploadPage({ projectId, versionId }: { projectId?: string; versionId?: string }) {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const {
     designImage,
     liveImage,
@@ -20,6 +22,11 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
     setShowAIConfigModal,
     switchVersion,
   } = useAppStore()
+
+  useEffect(() => {
+    if (authLoading) return
+    if (!user) router.replace('/login')
+  }, [user, authLoading, router])
 
   useLayoutEffect(() => {
     if (versionId) {
