@@ -24,6 +24,7 @@ export function useVersionSync(versionId: string | null) {
     setAnnotations,
     setDiffs,
     setGuidelinesMap,
+    setTargetWidth,
     setVersionLoading,
     setVersionSynced,
   } = useAppStore()
@@ -60,7 +61,14 @@ export function useVersionSync(versionId: string | null) {
       loadVersionData(versionId)
         .then(snapshot => {
           if (snapshot) {
-            if (snapshot.designImage) setDesignImage(snapshot.designImage)
+            if (snapshot.designImage) {
+              setDesignImage(snapshot.designImage)
+              // Sync targetWidth to the stored image width so all devices
+              // display at the same scale regardless of local settings.
+              if (snapshot.designImage.width > 0) {
+                setTargetWidth(snapshot.designImage.width)
+              }
+            }
             if (snapshot.liveImage) setLiveImage(snapshot.liveImage)
             setAnnotations(snapshot.annotations)
             setDiffs(snapshot.diffs)
