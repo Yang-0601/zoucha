@@ -306,7 +306,7 @@ function ImagePane({
   onDragEnd?: () => void
   /** Whether this pane is the live (线上稿) pane — annotation placement target */
   isLive?: boolean
-  /** Explicit render width in pixels — forces both panes to the same scale regardless of stored image resolution */
+  /** Canonical render width in canvas pixels — used for image rendering AND ruler edge markers */
   imgWidth?: number
 }) {
   const paneRef = useRef<HTMLDivElement>(null)
@@ -415,6 +415,7 @@ function ImagePane({
             guidelineOffset={vs.offsetY}
             canvasRootRef={paneRef}
             onCreateGuideline={(pos) => addGuideline({ id: crypto.randomUUID(), axis: 'y', pos })}
+            imgWidth={imgWidth}
           />
           <RulerBar
             axis="y"
@@ -423,6 +424,7 @@ function ImagePane({
             guidelineOffset={vs.offsetX}
             canvasRootRef={paneRef}
             onCreateGuideline={(pos) => addGuideline({ id: crypto.randomUUID(), axis: 'x', pos })}
+            imgWidth={imgWidth}
           />
         </>
       )}
@@ -1182,6 +1184,7 @@ export default function CompareCanvas() {
             guidelineOffset={activeVS.offsetY}
             canvasRootRef={canvasRootRef}
             onCreateGuideline={(pos) => addGuideline({ id: crypto.randomUUID(), axis: 'y', pos })}
+            imgWidth={canonicalWidth}
           />
           <RulerBar
             axis="y"
@@ -1190,6 +1193,7 @@ export default function CompareCanvas() {
             guidelineOffset={activeVS.offsetX}
             canvasRootRef={canvasRootRef}
             onCreateGuideline={(pos) => addGuideline({ id: crypto.randomUUID(), axis: 'x', pos })}
+            imgWidth={canonicalWidth}
           />
           <GuidelinesLayer viewState={activeVS} showRuler={showRuler} canvasRootRef={canvasRootRef} onDragStart={onDragStart} onDragEnd={onDragEnd} />
         </>
@@ -1291,13 +1295,15 @@ const RULER_SIZE = 20 // px, matches the top-5/left-5 offset (20px)
 const RULER_BG = '#EAE7E0'
 const RULER_BORDER = '#D7D5D1'
 
-function RulerBar({ axis, scale, offset, guidelineOffset, canvasRootRef, onCreateGuideline }: {
+function RulerBar({ axis, scale, offset, guidelineOffset, canvasRootRef, onCreateGuideline, imgWidth }: {
   axis: 'x' | 'y'
   scale: number
   offset: number          // 用于刻度渲染的 offset（axis='x'→offsetX，axis='y'→offsetY）
   guidelineOffset: number // 用于参考线坐标计算的 offset（与 offset 方向相反）
   canvasRootRef: React.RefObject<HTMLDivElement | null>
   onCreateGuideline: (canvasPos: number) => void
+  /** Image width/height in canvas units — used to render edge markers on the ruler */
+  imgWidth?: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const dragging = useRef(false)
@@ -1364,6 +1370,9 @@ function RulerBar({ axis, scale, offset, guidelineOffset, canvasRootRef, onCreat
     window.addEventListener('mouseup', onUp)
   }
 
+  // Image-edge markers: show a highlight at x=0 and x=imgWidth (or y=0 and y=imgHeight)
+  const edgeMarkers = imgWidth != null ? [0, imgWidth] : []
+
   if (axis === 'x') {
     return (
       <div
@@ -1382,6 +1391,29 @@ function RulerBar({ axis, scale, offset, guidelineOffset, canvasRootRef, onCreat
                   <span className="absolute text-[8px] leading-none select-none" style={{ color: '#999', bottom: 7, transform: 'translateX(-50%)' }}>{t}</span>
                 )}
                 <div style={{ width: 1, height: major ? 6 : 3, background: '#aaa' }} />
+              </div>
+            )
+          })}
+          {/* Image-edge markers */}
+          {edgeMarkers.map((v) => {
+            const x = screenPos(v)
+            return (
+              <div key={`edge-${v}`} className="absolute bottom-0" style={{ left: x, pointerEvents: 'none' }}>
+                <div style={{ width: 1, height: RULER_SIZE, background: 'rgba(37,37,37,0.35)' }} />
+                <span
+                  className="absolute text-[8px] leading-none select-none"
+                  style={{
+                    color: '#252525',
+                    fontWeight: 600,
+                    bottom: 2,
+                    left: v === 0 ? 2 : undefined,
+                    right: v !== 0 ? undefined : undefined,
+                    transform: v === 0 ? undefined : 'translateX(-100%)',
+                    paddingRight: v === 0 ? 0 : 2,
+                    paddingLeft: v === 0 ? 2 : 0,
+                    whiteSpace: 'nowrap',
+                  }}
+                >{v}</span>
               </div>
             )
           })}
@@ -1413,6 +1445,28 @@ function RulerBar({ axis, scale, offset, guidelineOffset, canvasRootRef, onCreat
             </div>
           )
         })}
+        {/* Image-edge markers */}
+        {edgeMarkers.map((v) => {
+          const y = screenPos(v)
+          return (
+            <div key={`edge-${v}`} className="absolute right-0" style={{ top: y, pointerEvents: 'none' }}>
+              <div style={{ height: 1, width: RULER_SIZE, background: 'rgba(37,37,37,0.35)' }} />
+              <span
+                className="absolute text-[8px] leading-none select-none"
+                style={{
+                  color: '#252525',
+                  fontWeight: 600,
+                  right: 2,
+                  top: v === 0 ? 2 : undefined,
+                  bottom: v !== 0 ? 2 : undefined,
+                  transform: 'rotate(180deg)',
+                  writingMode: 'vertical-rl',
+                  whiteSpace: 'nowrap',
+                }}
+              >{v}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1434,6 +1488,8 @@ function GuidelineLine({ guideline, viewState, showRuler, canvasRootRef, onMove,
   const { scale, offsetX, offsetY } = viewState
   const rulerOffset = showRuler ? RULER_SIZE : 0
   const [deleteHint, setDeleteHint] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isHover, setIsHover] = useState(false)
 
   // screen position of the guideline
   const screenCoord = axis === 'x'
@@ -1449,6 +1505,7 @@ function GuidelineLine({ guideline, viewState, showRuler, canvasRootRef, onMove,
     e.preventDefault()
     e.stopPropagation()
     dragging.current = true
+    setIsDragging(true)
     startScreen.current = axis === 'x' ? e.clientX : e.clientY
     startPos.current = pos
     onDragStart?.()
@@ -1472,6 +1529,7 @@ function GuidelineLine({ guideline, viewState, showRuler, canvasRootRef, onMove,
     }
     const onUp = (me: MouseEvent) => {
       dragging.current = false
+      setIsDragging(false)
       setDeleteHint(false)
       window.removeEventListener('mousemove', onMove_)
       window.removeEventListener('mouseup', onUp)
@@ -1482,13 +1540,15 @@ function GuidelineLine({ guideline, viewState, showRuler, canvasRootRef, onMove,
     window.addEventListener('mouseup', onUp)
   }
 
+  const lineColor = deleteHint ? '#ef4444' : '#2563eb'
+
   const style: React.CSSProperties = axis === 'x' ? {
     position: 'absolute',
     top: rulerOffset,
     bottom: 0,
     left: screenCoord,
     width: 1,
-    background: deleteHint ? '#ef4444' : '#2563eb',
+    background: lineColor,
     opacity: deleteHint ? 0.9 : 0.65,
     cursor: 'ew-resize',
     zIndex: 15,
@@ -1499,19 +1559,59 @@ function GuidelineLine({ guideline, viewState, showRuler, canvasRootRef, onMove,
     right: 0,
     top: screenCoord,
     height: 1,
-    background: deleteHint ? '#ef4444' : '#2563eb',
+    background: lineColor,
     opacity: deleteHint ? 0.9 : 0.65,
     cursor: 'ns-resize',
     zIndex: 15,
     pointerEvents: 'auto',
   }
 
+  // Position badge — shown while dragging or hovering
+  const showBadge = isDragging || isHover
+  const badgeStyle: React.CSSProperties = axis === 'x' ? {
+    position: 'absolute',
+    top: rulerOffset + 4,
+    left: 4,
+    background: deleteHint ? '#ef4444' : '#2563eb',
+    color: '#fff',
+    fontSize: 9,
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '0.02em',
+    padding: '1px 4px',
+    borderRadius: 3,
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+    userSelect: 'none',
+    lineHeight: '14px',
+  } : {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    background: deleteHint ? '#ef4444' : '#2563eb',
+    color: '#fff',
+    fontSize: 9,
+    fontVariantNumeric: 'tabular-nums',
+    letterSpacing: '0.02em',
+    padding: '1px 4px',
+    borderRadius: 3,
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+    userSelect: 'none',
+    lineHeight: '14px',
+  }
+
   return (
     <div
       style={style}
       onMouseDown={onMouseDown}
+      onMouseEnter={() => setIsHover(true)}
+      onMouseLeave={() => setIsHover(false)}
       onDoubleClick={(e) => { e.stopPropagation(); onRemove() }}
       title="拖回标尺删除 · 双击删除"
-    />
+    >
+      {showBadge && (
+        <div style={badgeStyle}>{pos}</div>
+      )}
+    </div>
   )
 }
