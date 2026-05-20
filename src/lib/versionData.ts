@@ -16,6 +16,7 @@ export interface VersionDataSnapshot {
   annotations: Annotation[]
   diffs: DiffRecord[]
   guidelinesMap: Record<CompareMode, Guideline[]>
+  targetWidth: number | null
 }
 
 /**
@@ -106,6 +107,7 @@ export async function saveVersionData(
     annotations: Annotation[]
     diffs: DiffRecord[]
     guidelinesMap: Record<CompareMode, Guideline[]>
+    targetWidth?: number | null
   },
 ): Promise<void> {
   const row = {
@@ -119,6 +121,7 @@ export async function saveVersionData(
     annotations: snapshot.annotations,
     diffs: snapshot.diffs,
     guidelines: snapshot.guidelinesMap,
+    target_width: snapshot.targetWidth ?? null,
     updated_at: new Date().toISOString(),
   }
   const { error } = await supabase
@@ -195,5 +198,6 @@ export async function loadVersionData(
       ...EMPTY_GUIDELINES_MAP(),
       ...((data.guidelines ?? {}) as Partial<Record<CompareMode, Guideline[]>>),
     },
+    targetWidth: data.target_width ?? null,
   }
 }

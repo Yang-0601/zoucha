@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
  * - If images exist (just uploaded), upload blobs to Storage then immediately save.
  * - Auto-saves annotations + diffs (debounced 1.5 s) whenever they change.
  * - Sets versionSynced=true once the initial load attempt completes (even if empty).
+ * - targetWidth is stored in DB and restored on load so all devices render at the same scale.
  */
 export function useVersionSync(versionId: string | null) {
   const {
@@ -62,18 +63,19 @@ export function useVersionSync(versionId: string | null) {
       loadVersionData(versionId)
         .then(snapshot => {
           if (snapshot) {
-            if (snapshot.designImage) {
-              setDesignImage(snapshot.designImage)
-              // Sync targetWidth to the stored image width so all devices
-              // display at the same scale regardless of local settings.
-              if (snapshot.designImage.width > 0) {
-                setTargetWidth(snapshot.designImage.width)
-              }
-            }
+            if (snapshot.designImage) setDesignImage(snapshot.designImage)
             if (snapshot.liveImage) setLiveImage(snapshot.liveImage)
             setAnnotations(snapshot.annotations)
             setDiffs(snapshot.diffs)
             setGuidelinesMap(snapshot.guidelinesMap)
+            // Restore the targetWidth that was selected at upload time so all devices
+            // render at the same scale. Fall back to the design image's pixel width
+            // for versions saved before this field was introduced.
+            if (snapshot.targetWidth && snapshot.targetWidth > 0) {
+              setTargetWidth(snapshot.targetWidth)
+            } else if (snapshot.designImage && snapshot.designImage.width > 0) {
+              setTargetWidth(snapshot.designImage.width)
+            }
             lastSavedKeyRef.current = JSON.stringify({
               a: snapshot.annotations,
               d: snapshot.diffs,
@@ -126,6 +128,7 @@ export function useVersionSync(versionId: string | null) {
           annotations: state.annotations,
           diffs: state.diffs,
           guidelinesMap: state.guidelinesMap,
+          targetWidth: state.targetWidth,
         })
         lastSavedKeyRef.current = JSON.stringify({
           a: state.annotations,
@@ -154,7 +157,15 @@ export function useVersionSync(versionId: string | null) {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
       try {
-        await saveVersionData(versionId, { designImage, liveImage, annotations, diffs, guidelinesMap })
+        const state = useAppStore.getState()
+        await saveVersionData(versionId, {
+          designImage,
+          liveImage,
+          annotations,
+          diffs,
+          guidelinesMap,
+          targetWidth: state.targetWidth,
+        })
         lastSavedKeyRef.current = key
       } catch (err) {
         console.error('[useVersionSync] auto-save error', err instanceof Error ? err.message : err)
@@ -176,6 +187,7 @@ export function useVersionSync(versionId: string | null) {
               annotations: s.annotations,
               diffs: s.diffs,
               guidelinesMap: s.guidelinesMap,
+              targetWidth: s.targetWidth,
             }).catch(err => console.error('[useVersionSync] flush save error', err))
           })
         }
