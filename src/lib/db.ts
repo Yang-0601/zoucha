@@ -27,13 +27,11 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function createProject(project: Project): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser()
   const { error } = await supabase.from('projects').insert({
     id: project.id,
     name: project.name,
     version: project.version,
     sort_order: project.sortOrder,
-    owner_id: user?.id ?? null,
     created_at: new Date(project.createdAt).toISOString(),
     updated_at: new Date(project.updatedAt).toISOString(),
   })

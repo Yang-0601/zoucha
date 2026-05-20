@@ -5,7 +5,6 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Settings, FileDown, Link2, Check } from 'lucide-react'
 import { useAppStore } from '@/store'
-import { useAuth } from '@/hooks/useAuth'
 import { useVersionSync } from '@/hooks/useVersionSync'
 import Toolbar from './Toolbar'
 import DiffList from './DiffList'
@@ -29,7 +28,6 @@ export default function Workbench() {
     ? `/project/${projectId}/version/${versionId}`
     : backUrl
 
-  const { user, loading: authLoading } = useAuth()
   const {
     designImage, liveImage,
     setShowAIConfigModal, toggleRuler,
@@ -38,15 +36,8 @@ export default function Workbench() {
     switchVersion, versionData,
     annotations, diffs,
     activeAnnotationId, removeDiff, removeAnnotation,
-    setRole,
     versionLoading, versionSynced,
   } = useAppStore()
-
-  // Auto-set role based on auth: logged-in → reviewer, guest → developer
-  useEffect(() => {
-    if (authLoading) return
-    setRole(user ? 'reviewer' : 'developer')
-  }, [user, authLoading, setRole])
 
   const [linkCopied, setLinkCopied] = useState(false)
   function handleCopyLink() {

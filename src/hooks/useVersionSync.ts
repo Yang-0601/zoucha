@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store'
 import { loadVersionData, saveVersionData, uploadVersionImage } from '@/lib/versionData'
-import { supabase } from '@/lib/supabase'
 
 /**
  * Syncs version data between Supabase and the Zustand store.
@@ -153,9 +152,6 @@ export function useVersionSync(versionId: string | null) {
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
-      // Skip writes for unauthenticated users (developers using shared links)
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) return
       try {
         const state = useAppStore.getState()
         await saveVersionData(versionId, {
@@ -179,17 +175,14 @@ export function useVersionSync(versionId: string | null) {
         // Flush unsaved changes immediately when leaving the page
         const s = useAppStore.getState()
         if (s.designImage && s.liveImage) {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            if (!session) return
-            saveVersionData(versionId, {
-              designImage: s.designImage!,
-              liveImage: s.liveImage!,
-              annotations: s.annotations,
-              diffs: s.diffs,
-              guidelinesMap: s.guidelinesMap,
-              targetWidth: s.targetWidth,
-            }).catch(err => console.error('[useVersionSync] flush save error', err))
-          })
+          saveVersionData(versionId, {
+            designImage: s.designImage,
+            liveImage: s.liveImage,
+            annotations: s.annotations,
+            diffs: s.diffs,
+            guidelinesMap: s.guidelinesMap,
+            targetWidth: s.targetWidth,
+          }).catch(err => console.error('[useVersionSync] flush save error', err))
         }
       }
     }

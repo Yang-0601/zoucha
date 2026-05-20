@@ -7,7 +7,6 @@ import { Project, ProjectVersion } from '@/types'
 import { getProjects, updateProject, getVersions, createVersion, updateVersion, deleteVersion } from '@/lib/db'
 import { getVersionIdsWithData, getVersionsFixStats, VersionFixStats } from '@/lib/versionData'
 import { useAppStore } from '@/store'
-import { useAuth } from '@/hooks/useAuth'
 import dynamic from 'next/dynamic'
 import RoleBadge from '@/components/role/RoleBadge'
 
@@ -34,17 +33,11 @@ function genId() {
 
 export default function VersionListPage({ projectId }: { projectId: string }) {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
   const {
     setShowAIConfigModal, showReportModal, setShowReportModal,
     switchVersion, role,
   } = useAppStore()
   const isReviewer = role === 'reviewer'
-
-  useEffect(() => {
-    if (authLoading) return
-    if (!user) router.replace('/login')
-  }, [user, authLoading, router])
   const [project, setProject] = useState<Project | null>(null)
   const [versions, setVersions] = useState<ProjectVersion[]>([])
   const [creating, setCreating] = useState(false)
