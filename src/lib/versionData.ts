@@ -113,11 +113,13 @@ export async function saveVersionData(
   const row = {
     version_id: versionId,
     design_url: snapshot.designImage?.storedUrl ?? snapshot.designImage?.url ?? null,
-    design_width: snapshot.designImage?.width ?? null,
-    design_height: snapshot.designImage?.height ?? null,
+    // Store scaled dimensions so all devices render at the same size.
+    // scaledWidth/scaledHeight are set by scaleImageToWidth; fall back to natural dims.
+    design_width: snapshot.designImage?.scaledWidth ?? snapshot.designImage?.width ?? null,
+    design_height: snapshot.designImage?.scaledHeight ?? snapshot.designImage?.height ?? null,
     live_url: snapshot.liveImage?.storedUrl ?? snapshot.liveImage?.url ?? null,
-    live_width: snapshot.liveImage?.width ?? null,
-    live_height: snapshot.liveImage?.height ?? null,
+    live_width: snapshot.liveImage?.scaledWidth ?? snapshot.liveImage?.width ?? null,
+    live_height: snapshot.liveImage?.scaledHeight ?? snapshot.liveImage?.height ?? null,
     annotations: snapshot.annotations,
     diffs: snapshot.diffs,
     guidelines: snapshot.guidelinesMap,
@@ -180,6 +182,11 @@ export async function loadVersionData(
       ? {
           url: data.design_url,
           storedUrl: data.design_url,
+          // scaledUrl/scaledWidth/scaledHeight are required by CompareCanvas for layout.
+          // The stored URL is the scaled image; stored dims are the scaled dimensions.
+          scaledUrl: data.design_url,
+          scaledWidth: data.design_width ?? 0,
+          scaledHeight: data.design_height ?? 0,
           width: data.design_width ?? 0,
           height: data.design_height ?? 0,
         }
@@ -188,6 +195,9 @@ export async function loadVersionData(
       ? {
           url: data.live_url,
           storedUrl: data.live_url,
+          scaledUrl: data.live_url,
+          scaledWidth: data.live_width ?? 0,
+          scaledHeight: data.live_height ?? 0,
           width: data.live_width ?? 0,
           height: data.live_height ?? 0,
         }
