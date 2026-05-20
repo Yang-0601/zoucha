@@ -48,10 +48,13 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
   const handleDesignImage = async (img: Parameters<typeof setDesignImage>[0]) => {
     if (!img) return setDesignImage(null)
     const scaled = await scaleImageToWidth(img, targetWidth)
-    if (versionId && scaled.url.startsWith('blob:')) {
+    if (versionId) {
       try {
-        const storedUrl = await uploadVersionImage(versionId, 'design', scaled.url)
-        setDesignImage({ ...scaled, storedUrl, url: storedUrl })
+        // Upload the scaled canvas version (scaledUrl) so Storage holds the correctly-sized image.
+        // This ensures any device loading from Supabase renders at the same width.
+        const urlToUpload = scaled.scaledUrl ?? scaled.url
+        const storedUrl = await uploadVersionImage(versionId, 'design', urlToUpload)
+        setDesignImage({ ...scaled, storedUrl, scaledUrl: storedUrl, url: storedUrl })
       } catch {
         setDesignImage(scaled)
       }
@@ -63,10 +66,11 @@ export default function UploadPage({ projectId, versionId }: { projectId?: strin
   const handleLiveImage = async (img: Parameters<typeof setLiveImage>[0]) => {
     if (!img) return setLiveImage(null)
     const scaled = await scaleImageToWidth(img, targetWidth)
-    if (versionId && scaled.url.startsWith('blob:')) {
+    if (versionId) {
       try {
-        const storedUrl = await uploadVersionImage(versionId, 'live', scaled.url)
-        setLiveImage({ ...scaled, storedUrl, url: storedUrl })
+        const urlToUpload = scaled.scaledUrl ?? scaled.url
+        const storedUrl = await uploadVersionImage(versionId, 'live', urlToUpload)
+        setLiveImage({ ...scaled, storedUrl, scaledUrl: storedUrl, url: storedUrl })
       } catch {
         setLiveImage(scaled)
       }

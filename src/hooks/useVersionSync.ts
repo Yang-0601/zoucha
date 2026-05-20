@@ -100,20 +100,23 @@ export function useVersionSync(versionId: string | null) {
         let design = currentDesign
         let live = currentLive
 
-        if (!design.storedUrl && design.url.startsWith('blob:')) {
+        if (!design.storedUrl) {
           try {
-            const url = await uploadVersionImage(versionId, 'design', design.url)
-            design = { ...design, storedUrl: url }
+            // Upload the scaled version (scaledUrl) so Storage holds the target-width image.
+            const urlToUpload = design.scaledUrl ?? design.url
+            const url = await uploadVersionImage(versionId, 'design', urlToUpload)
+            design = { ...design, storedUrl: url, scaledUrl: url, url }
             setDesignImage(design)
           } catch (err) {
             console.error('[useVersionSync] design image upload error', err)
           }
         }
 
-        if (!live.storedUrl && live.url.startsWith('blob:')) {
+        if (!live.storedUrl) {
           try {
-            const url = await uploadVersionImage(versionId, 'live', live.url)
-            live = { ...live, storedUrl: url }
+            const urlToUpload = live.scaledUrl ?? live.url
+            const url = await uploadVersionImage(versionId, 'live', urlToUpload)
+            live = { ...live, storedUrl: url, scaledUrl: url, url }
             setLiveImage(live)
           } catch (err) {
             console.error('[useVersionSync] live image upload error', err)

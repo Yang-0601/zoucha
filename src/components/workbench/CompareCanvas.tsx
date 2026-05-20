@@ -291,7 +291,7 @@ function GuidelinesLayer({ viewState, showRuler, canvasRootRef, onDragStart, onD
 
 function ImagePane({
   src, label, vsRef, vs, onZoom, spaceDown, onGrabChange, showRuler, addGuideline, onDragStart, onDragEnd,
-  isLive,
+  isLive, imgWidth,
 }: {
   src: string
   label: string
@@ -306,6 +306,8 @@ function ImagePane({
   onDragEnd?: () => void
   /** Whether this pane is the live (线上稿) pane — annotation placement target */
   isLive?: boolean
+  /** Explicit render width in pixels — forces both panes to the same scale regardless of stored image resolution */
+  imgWidth?: number
 }) {
   const paneRef = useRef<HTMLDivElement>(null)
   useStableWheel(paneRef, vsRef, onZoom)
@@ -445,7 +447,7 @@ function ImagePane({
           position: 'absolute', top: 0, left: 0,
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={label} style={{ display: 'block', maxWidth: 'none', imageRendering: 'pixelated' }} />
+          <img src={src} alt={label} style={{ display: 'block', maxWidth: 'none', imageRendering: 'pixelated', ...(imgWidth ? { width: imgWidth } : {}) }} />
         </div>
       </div>
 
@@ -641,7 +643,10 @@ function OverlayCanvas({
   const activeDesignVS = syncLocked ? viewState : overlayDesignViewState
   const activeLiveVS   = syncLocked ? viewState : overlayLiveViewState
 
-  const imgBase: React.CSSProperties = { display: 'block', maxWidth: 'none', imageRendering: 'pixelated' }
+  // Canonical width ensures both images render at the same scale across all devices
+  const overlayCanonicalWidth = useAppStore.getState().targetWidth
+    || designImage?.scaledWidth || liveImage?.scaledWidth || 375
+  const imgBase: React.CSSProperties = { display: 'block', maxWidth: 'none', imageRendering: 'pixelated', width: overlayCanonicalWidth }
 
   const activePan = syncLocked ? sharedPan : (selected === 'design' ? designDragPan : liveDragPan)
 
@@ -1009,6 +1014,7 @@ export default function CompareCanvas() {
     addGuideline,
     guidelinesMap,
     analysisRunning, analysisProgress, analysisPhase,
+    targetWidth,
   } = useAppStore()
 
   const canvasRootRef = useRef<HTMLDivElement>(null)
@@ -1152,7 +1158,9 @@ export default function CompareCanvas() {
   const onGrabChange = useCallback((v: boolean) => setIsGrabbing(v), [])
 
   const noImages = !designImage && !liveImage
-  const imgStyle: React.CSSProperties = { display: 'block', maxWidth: 'none', imageRendering: 'pixelated' }
+  // Use targetWidth as the canonical render width so all devices show images at the same scale
+  const canonicalWidth = targetWidth || designImage?.scaledWidth || liveImage?.scaledWidth || 375
+  const imgStyle: React.CSSProperties = { display: 'block', maxWidth: 'none', imageRendering: 'pixelated', width: canonicalWidth }
 
   // side-by-side and slider always sync-locked — disable the lock toggle visually via Toolbar
   const isSyncMode = compareMode === 'side-by-side' || compareMode === 'slider'
@@ -1207,6 +1215,7 @@ export default function CompareCanvas() {
                 addGuideline={addGuideline}
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
+                imgWidth={canonicalWidth}
               />
             )}
             {liveImage && (
@@ -1223,6 +1232,7 @@ export default function CompareCanvas() {
                 onDragStart={onDragStart}
                 onDragEnd={onDragEnd}
                 isLive
+                imgWidth={canonicalWidth}
               />
             )}
           </div>
